@@ -1,0 +1,122 @@
+from pydantic import BaseModel, EmailStr, Field, field_validator
+from typing import Optional
+from datetime import datetime
+
+
+# Request Schemas
+class SignupRequest(BaseModel):
+    """Signup request schema."""
+    
+    name: str = Field(..., min_length=2, max_length=100)
+    email: EmailStr
+    password: str = Field(..., min_length=8, max_length=100)
+    clinic_name: str = Field(..., min_length=2, max_length=200)
+    
+    @field_validator('password')
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters long')
+        if not any(c.isupper() for c in v):
+            raise ValueError('Password must contain at least one uppercase letter')
+        if not any(c.islower() for c in v):
+            raise ValueError('Password must contain at least one lowercase letter')
+        if not any(c.isdigit() for c in v):
+            raise ValueError('Password must contain at least one digit')
+        return v
+
+
+class LoginRequest(BaseModel):
+    """Login request schema."""
+    
+    email: EmailStr
+    password: str
+
+
+class ForgotPasswordRequest(BaseModel):
+    """Forgot password request schema."""
+    
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    """Reset password request schema."""
+    
+    token: str
+    new_password: str = Field(..., min_length=8, max_length=100)
+    
+    @field_validator('new_password')
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters long')
+        if not any(c.isupper() for c in v):
+            raise ValueError('Password must contain at least one uppercase letter')
+        if not any(c.islower() for c in v):
+            raise ValueError('Password must contain at least one lowercase letter')
+        if not any(c.isdigit() for c in v):
+            raise ValueError('Password must contain at least one digit')
+        return v
+
+
+class ChangePasswordRequest(BaseModel):
+    """Change password request schema."""
+    
+    current_password: str
+    new_password: str = Field(..., min_length=8, max_length=100)
+    
+    @field_validator('new_password')
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters long')
+        return v
+
+
+# Response Schemas
+class UserResponse(BaseModel):
+    """User response schema."""
+    
+    id: str
+    email: EmailStr
+    name: str
+    phone: Optional[str] = None
+    role: str
+    clinic_id: Optional[str] = None
+    is_active: bool
+    is_verified: bool
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class TokenResponse(BaseModel):
+    """Token response schema."""
+    
+    access_token: str
+    token_type: str = "bearer"
+
+
+class LoginResponse(BaseModel):
+    """Login response schema."""
+    
+    access_token: str
+    token_type: str = "bearer"
+    user: UserResponse
+
+
+class SignupResponse(BaseModel):
+    """Signup response schema."""
+    
+    access_token: str
+    token_type: str = "bearer"
+    user: UserResponse
+    clinic_id: Optional[str] = None
+
+
+class MessageResponse(BaseModel):
+    """Generic message response."""
+    
+    message: str

@@ -1,0 +1,329 @@
+
+Phase 1 Requirements – Auth & Admin + Basic Clinic Setup
+
+1. Objective
+
+Build the foundation so an Admin can:
+	1.	Create an account.
+	2.	Create a clinic.
+	3.	Log in / log out securely.
+	4.	Manage their own profile.
+	5.	Set up basic clinic details + branding.
+	6.	Land on a simple dashboard shell that will later host Patients/Labs/etc.
+
+No other roles yet (no provider/assistant/patient UI).
+
+⸻
+
+2. In-Scope vs Out-of-Scope
+
+In Scope (Phase 1)
+	•	Email/password authentication.
+	•	Admin signup + clinic creation.
+	•	Admin login / logout / forgot password / reset password.
+	•	Admin dashboard shell (with navigation, mostly empty states).
+	•	Clinic Settings:
+	•	Clinic info (name, address).
+	•	Branding (logo upload + primary color).
+	•	Admin profile page.
+
+Out of Scope (later phases)
+	•	Patients, Labs, Notes, Programs, Chat, Appointments.
+	•	Multi-role support (provider, assistant, patient).
+	•	Notifications, audit logs, payments, AI, etc.
+
+⸻
+
+3. Actor
+	•	Admin
+	•	The only type of user for now.
+	•	Owns and manages exactly one clinic in Phase 1.
+
+⸻
+
+4. User Flows
+
+4.1 Admin Signup + Clinic Creation
+
+Flow:
+	1.	Admin visits app.domain.com/signup.
+	2.	Fills form:
+	•	Full name
+	•	Email
+	•	Password
+	•	Clinic name
+	3.	Clicks “Create account”.
+	4.	System:
+	•	Creates user (admin).
+	•	Creates clinic.
+	•	Links user ↔ clinic.
+	5.	Admin is logged in and redirected to:
+	•	Either Dashboard or
+	•	A small Onboarding/Setup screen.
+
+4.2 Login
+	1.	Admin visits app.domain.com/login.
+	2.	Enters email + password.
+	3.	On success → redirect to Dashboard.
+	4.	On failure → show error message: “Invalid email or password.”
+
+4.3 Logout
+	•	From the top-right user menu, Admin clicks Log out.
+	•	Session/token invalidated.
+	•	Redirect to Login page.
+
+4.4 Forgot Password / Reset Password
+	1.	On Login screen, Admin clicks “Forgot Password?”.
+	2.	Enters email.
+	3.	If user exists:
+	•	System generates reset token.
+	•	Sends reset email with link.
+	4.	Admin clicks link → Reset Password screen:
+	•	New password
+	•	Confirm password
+	5.	On success → redirect to Login with “Password updated” message.
+
+4.5 Admin Updates Clinic Settings
+	1.	From Dashboard, Admin clicks Settings → Clinic.
+	2.	Edits:
+	•	Clinic name
+	•	Address
+	3.	Saves changes.
+
+4.6 Admin Updates Branding
+	1.	From Settings → Branding:
+	•	Upload logo (image).
+	•	Select primary color (color picker or presets).
+	2.	Saves changes.
+	3.	UI theme updates (basic usage: primary button color, top nav accent).
+
+4.7 Admin Updates Their Profile
+	1.	From top-right avatar → Profile.
+	2.	Can edit:
+	•	Name
+	•	Phone (optional)
+	3.	Click Save.
+
+⸻
+
+5. Screens & UI Requirements (Phase 1 Only)
+
+5.1 Login Screen (Web)
+
+Layout (as per your spec):
+	•	Split-screen:
+	•	Left: blurred clinic-related image (static).
+	•	Right: login form.
+	•	Clinic/product logo top-left.
+
+Fields:
+	•	Email input.
+	•	Password input.
+	•	“Forgot Password?” link.
+	•	Login button (primary).
+
+Validation & Errors:
+	•	Show inline errors for:
+	•	Missing email/password.
+	•	Invalid credentials.
+
+⸻
+
+5.2 Signup Screen (Admin Only)
+
+Fields:
+	•	Full Name
+	•	Email
+	•	Password
+	•	Clinic Name
+
+Actions:
+	•	Create Account button.
+
+Behavior:
+	•	On success → create user + clinic → redirect to dashboard.
+	•	Show errors if email already exists.
+
+⸻
+
+5.3 Dashboard (Shell Only)
+
+For now, this is mostly a layout frame, not full functionality.
+
+Top Nav:
+	•	Clinic logo (from branding; fallback to app logo).
+	•	Nav items (all can lead to empty states for now):
+	•	Dashboard
+	•	Patients
+	•	Labs
+	•	Appointments
+	•	Programs
+	•	Messages
+	•	Settings
+	•	Right side:
+	•	Admin avatar/name
+	•	Dropdown: Profile, Logout
+
+Main Content (Dashboard tab):
+	•	Placeholder KPI cards (static or dummy data for now):
+	•	Total Active Patients
+	•	New Labs This Week
+	•	Tomorrow’s Appointments
+	•	Unread Messages
+
+Real data will be wired later when those modules exist.
+
+⸻
+
+5.4 Settings – Clinic
+
+Tabs (left side or top):
+	•	Clinic
+	•	Branding
+	•	(Later: Staff, Notifications, etc.)
+
+Clinic Section:
+	•	Fields:
+	•	Clinic Name
+	•	Address (single text area or multiple fields)
+	•	Actions:
+	•	Save button
+
+⸻
+
+5.5 Settings – Branding
+
+Fields:
+	•	Logo upload:
+	•	Image picker → uploads to storage (S3 or similar).
+	•	Show preview thumbnail.
+	•	Primary color:
+	•	Color input (hex) or color picker.
+	•	Optional presets (blue, teal, purple, etc.).
+
+Actions:
+	•	Save button.
+
+Behavior:
+	•	After save:
+	•	Use primary color for:
+	•	Primary buttons
+	•	Links, highlights
+	•	Top nav accent (if design wants it)
+
+⸻
+
+5.6 Profile Screen (Admin)
+
+Fields:
+	•	Name
+	•	Email (read-only in Phase 1, or changeable if you want)
+	•	Phone (optional)
+
+Actions:
+	•	Save button.
+
+Optional:
+	•	“Change password” link → opens modal with:
+	•	Current password
+	•	New password
+	•	Confirm password
+
+⸻
+
+6. Functional Requirements (Backend)
+
+6.1 Core Entities (Phase 1 Subset)
+
+We’ll use a subset of your full schema:
+
+TABLE: users
+	•	id (uuid, PK)
+	•	email (unique)
+	•	password_hash
+	•	name
+	•	phone (nullable)
+	•	created_at
+	•	For now: implicitly admin.
+(You can still keep a role column defaulted to admin for future use, but no UI/logic around multiple roles yet.)
+
+TABLE: clinics
+	•	id (uuid, PK)
+	•	name
+	•	logo_url (nullable)
+	•	color_theme (nullable, e.g. hex string)
+	•	address (nullable)
+	•	created_at
+
+TABLE: clinic_users (optional in Phase 1 but recommended for future-proofing)
+	•	id
+	•	clinic_id
+	•	user_id
+	•	In Phase 1:
+	•	Every clinic_users row is effectively an admin.
+
+TABLE: password_resets (or tokens table)
+	•	id
+	•	user_id
+	•	token
+	•	expires_at
+	•	used (boolean)
+
+⸻
+
+6.2 Auth Endpoints (Example)
+	•	POST /auth/signup
+	•	Body: { name, email, password, clinic_name }
+	•	Creates user + clinic + clinic_user.
+	•	Returns auth token + user + clinic.
+	•	POST /auth/login
+	•	Body: { email, password }
+	•	Returns auth token + user + clinic.
+	•	POST /auth/logout
+	•	Invalidates token (depending on strategy).
+	•	POST /auth/forgot-password
+	•	Body: { email }
+	•	Sends reset link if user exists.
+	•	POST /auth/reset-password
+	•	Body: { token, new_password }
+	•	GET /me
+	•	Returns current user + clinic (with token).
+
+⸻
+
+6.3 Clinic & Branding Endpoints
+	•	GET /clinic
+	•	Returns clinic details for current admin.
+	•	PUT /clinic
+	•	Body: { name, address }
+	•	PUT /clinic/branding
+	•	Body: { logo_url, color_theme }
+	•	logo_url returned after file upload flow.
+
+⸻
+
+6.4 File Upload (Logo)
+	•	For now: simple S3-style upload.
+	•	Frontend either:
+	•	Uses a presigned URL endpoint: POST /files/presign, or
+	•	Uploads via backend: POST /files/logo.
+
+Return final logo_url to be saved in clinics.logo_url.
+
+⸻
+
+7. Non-Functional Requirements
+	•	Security
+	•	HTTPS enforced.
+	•	Password hashing (bcrypt/argon2).
+	•	JWT or secure session management.
+	•	Performance
+	•	Admin login and dashboard load within ~1–2 seconds for basic data.
+	•	Scalability
+	•	Data model ready for multiple clinics and multiple user roles later (even if unused now).
+	•	Tech Stack (as per your plan)
+	•	Backend: Node (NestJS/Express) or Laravel.
+	•	Frontend (admin): React / Next.js.
+	•	DB: PostgreSQL.
+	•	Storage: S3-compatible (AWS, DO, etc.).
+
