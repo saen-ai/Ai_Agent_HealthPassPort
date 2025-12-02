@@ -9,6 +9,8 @@ from app.features.auth.schemas import (
     ChangePasswordRequest,
     MessageResponse,
     UserResponse,
+    SendSignupOtpRequest,
+    VerifySignupOtpRequest,
 )
 from app.features.auth.service import AuthService
 from app.features.auth.dependencies import get_current_user
@@ -157,4 +159,55 @@ async def get_current_user_info(current_user: User = Depends(get_current_user)):
         is_verified=current_user.is_verified,
         created_at=current_user.created_at,
         updated_at=current_user.updated_at,
+    )
+
+
+@router.post("/send-signup-otp", response_model=MessageResponse)
+async def send_signup_otp(request: SendSignupOtpRequest):
+    """
+    Send OTP code for signup verification.
+    
+    - **email**: User's email address
+    - **name**: User's full name
+    - **clinic_name**: Name of the clinic to create
+    - **password**: Strong password (min 8 chars, 1 uppercase, 1 lowercase, 1 digit)
+    - **phone**: Optional phone number
+    """
+    await AuthService.send_signup_otp(request)
+    
+    return MessageResponse(
+        message="OTP code has been sent to your email"
+    )
+
+
+@router.post("/verify-signup-otp", response_model=SignupResponse, status_code=status.HTTP_201_CREATED)
+async def verify_signup_otp(request: VerifySignupOtpRequest):
+    """
+    Verify OTP code and create user account with clinic.
+    
+    - **email**: User's email address
+    - **otp_code**: 4-digit OTP code from email
+    - **name**: User's full name
+    - **clinic_name**: Name of the clinic to create
+    - **password**: Strong password (min 8 chars, 1 uppercase, 1 lowercase, 1 digit)
+    - **phone**: Optional phone number
+    """
+    user, access_token, clinic_id = await AuthService.verify_signup_otp(request)
+    
+    return SignupResponse(
+        access_token=access_token,
+        token_type="bearer",
+        user=UserResponse(
+            id=str(user.id),
+            email=user.email,
+            name=user.name,
+            phone=user.phone,
+            role=user.role,
+            clinic_id=clinic_id,
+            is_active=user.is_active,
+            is_verified=user.is_verified,
+            created_at=user.created_at,
+            updated_at=user.updated_at,
+        ),
+        clinic_id=clinic_id,
     )

@@ -1,15 +1,18 @@
 from datetime import datetime, timedelta
 from typing import Optional
 from beanie import PydanticObjectId
-from app.features.auth.models import User, PasswordReset
-from app.features.auth.schemas import SignupRequest, LoginRequest, UserResponse
+from beanie.operators import And
+from app.features.auth.models import User, PasswordReset, EmailVerification
+from app.features.clinic.models import Clinic
+from app.features.auth.schemas import SignupRequest, LoginRequest, UserResponse, SendSignupOtpRequest, VerifySignupOtpRequest
 from app.core.security import (
     verify_password,
     get_password_hash,
     create_access_token,
-    generate_reset_token
+    generate_reset_token,
+    generate_otp
 )
-from app.core.email import send_password_reset_email, send_welcome_email
+from app.core.email import send_password_reset_email, send_welcome_email, send_otp_email
 from app.shared.exceptions import (
     BadRequestException,
     NotFoundException,
@@ -34,18 +37,27 @@ class AuthService:
         if existing_user:
             raise ConflictException("Email already registered")
         
+        # Create clinic first
+        clinic = Clinic(
+            name=signup_data.clinic_name,
+            address="",
+            logo_url="",
+            color_theme="#4F46E5"
+        )
+        await clinic.insert()
+        
         # Create user
         user = User(
             email=signup_data.email,
             password_hash=get_password_hash(signup_data.password),
             name=signup_data.name,
             role="admin",
+            clinic_id=str(clinic.id),
+            is_verified=True
         )
         await user.insert()
         
-        # TODO: Create clinic when clinic feature is implemented
-        # For now, we'll set clinic_id to None
-        clinic_id = None
+        clinic_id = str(clinic.id)
         
         # Create access token
         access_token = create_access_token(data={"sub": user.email, "user_id": str(user.id)})
@@ -185,3 +197,116 @@ class AuthService:
             return await User.get(PydanticObjectId(user_id))
         except:
             return None
+    
+    @staticmethod
+    async def send_signup_otp(request: SendSignupOtpRequest) -> bool:
+        """
+        Send OTP for signup verification.
+        
+        Returns:
+            bool: True if OTP sent successfully
+        """
+        # Check if user already exists
+        existing_user = await User.find_one(User.email == request.email)
+        if existing_user:
+            raise ConflictException("Email already registered")
+        
+        # Generate OTP
+        otp_code = generate_otp()
+        expires_at = datetime.utcnow() + timedelta(minutes=10)
+        
+        # Invalidate any existing OTPs for this email
+        existing_verifications = await EmailVerification.find(
+            And(
+                EmailVerification.email == request.email,
+                EmailVerification.purpose == "signup",
+                EmailVerification.used == False
+            )
+        ).to_list()
+        
+        for verification in existing_verifications:
+            verification.used = True
+            await verification.save()
+        
+        # Create new email verification
+        email_verification = EmailVerification(
+            email=request.email,
+            otp_code=otp_code,
+            expires_at=expires_at,
+            purpose="signup"
+        )
+        await email_verification.insert()
+        
+        # Send OTP email
+        try:
+            await send_otp_email(request.email, otp_code, "signup")
+            return True
+        except Exception as e:
+            print(f"Failed to send OTP email: {str(e)}")
+            return False
+    
+    @staticmethod
+    async def verify_signup_otp(request: VerifySignupOtpRequest) -> tuple[User, str, str]:
+        """
+        Verify OTP and create user account with clinic.
+        
+        Returns:
+            tuple: (user, access_token, clinic_id)
+        """
+        # Find email verification
+        email_verification = await EmailVerification.find_one(
+            And(
+                EmailVerification.email == request.email,
+                EmailVerification.otp_code == request.otp_code,
+                EmailVerification.purpose == "signup",
+                EmailVerification.used == False
+            )
+        )
+        
+        if not email_verification:
+            raise BadRequestException("Invalid or expired OTP code")
+        
+        # Check if OTP is expired
+        if email_verification.expires_at < datetime.utcnow():
+            raise BadRequestException("OTP code has expired")
+        
+        # Check if user already exists (race condition check)
+        existing_user = await User.find_one(User.email == request.email)
+        if existing_user:
+            raise ConflictException("Email already registered")
+        
+        # Create clinic
+        clinic = Clinic(
+            name=request.clinic_name,
+            address="",
+            logo_url="",
+            color_theme="#4F46E5"
+        )
+        await clinic.insert()
+        
+        # Create user
+        user = User(
+            email=request.email,
+            password_hash=get_password_hash(request.password),
+            name=request.name,
+            phone=request.phone,
+            role="admin",
+            clinic_id=str(clinic.id),
+            is_verified=True
+        )
+        await user.insert()
+        
+        # Mark OTP as used
+        email_verification.used = True
+        await email_verification.save()
+        
+        # Create access token
+        access_token = create_access_token(data={"sub": user.email, "user_id": str(user.id)})
+        
+        # Send welcome email (non-blocking)
+        try:
+            await send_welcome_email(user.email, user.name)
+        except Exception as e:
+            print(f"Failed to send welcome email: {str(e)}")
+        
+        return user, access_token, str(clinic.id)

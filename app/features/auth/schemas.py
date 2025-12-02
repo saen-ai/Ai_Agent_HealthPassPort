@@ -73,6 +73,60 @@ class ChangePasswordRequest(BaseModel):
         return v
 
 
+class SendSignupOtpRequest(BaseModel):
+    """Send signup OTP request schema."""
+    
+    email: EmailStr
+    name: str = Field(..., min_length=2, max_length=100)
+    clinic_name: str = Field(..., min_length=2, max_length=200)
+    password: str = Field(..., min_length=8, max_length=100)
+    phone: Optional[str] = None
+    
+    @field_validator('password')
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters long')
+        if not any(c.isupper() for c in v):
+            raise ValueError('Password must contain at least one uppercase letter')
+        if not any(c.islower() for c in v):
+            raise ValueError('Password must contain at least one lowercase letter')
+        if not any(c.isdigit() for c in v):
+            raise ValueError('Password must contain at least one digit')
+        return v
+
+
+class VerifySignupOtpRequest(BaseModel):
+    """Verify signup OTP request schema."""
+    
+    email: EmailStr
+    otp_code: str = Field(..., min_length=4, max_length=4)
+    name: str = Field(..., min_length=2, max_length=100)
+    clinic_name: str = Field(..., min_length=2, max_length=200)
+    password: str = Field(..., min_length=8, max_length=100)
+    phone: Optional[str] = None
+    
+    @field_validator('otp_code')
+    @classmethod
+    def validate_otp(cls, v: str) -> str:
+        if not v.isdigit():
+            raise ValueError('OTP code must be numeric')
+        return v
+    
+    @field_validator('password')
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError('Password must be at least 8 characters long')
+        if not any(c.isupper() for c in v):
+            raise ValueError('Password must contain at least one uppercase letter')
+        if not any(c.islower() for c in v):
+            raise ValueError('Password must contain at least one lowercase letter')
+        if not any(c.isdigit() for c in v):
+            raise ValueError('Password must contain at least one digit')
+        return v
+
+
 # Response Schemas
 class UserResponse(BaseModel):
     """User response schema."""

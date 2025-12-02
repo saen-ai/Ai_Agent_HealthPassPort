@@ -47,3 +47,8 @@ def decode_token(token: str) -> Optional[dict]:
 def generate_reset_token() -> str:
     """Generate a secure random token for password reset."""
     return secrets.token_urlsafe(32)
+
+
+def generate_otp() -> str:
+    """Generate a 4-digit OTP code."""
+    return f"{secrets.randbelow(10000):04d}"

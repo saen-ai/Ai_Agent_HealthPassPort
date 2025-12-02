@@ -15,7 +15,8 @@ class Database:
         cls.client = AsyncIOMotorClient(settings.MONGODB_URL)
         
         # Import all document models here
-        from app.features.auth.models import User, PasswordReset
+        from app.features.auth.models import User, PasswordReset, EmailVerification
+        from app.features.clinic.models import Clinic
         
         # Initialize Beanie with document models
         await init_beanie(
@@ -23,6 +24,8 @@ class Database:
             document_models=[
                 User,
                 PasswordReset,
+                EmailVerification,
+                Clinic,
                 # Add more models as features are implemented
             ]
         )

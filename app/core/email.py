@@ -162,3 +162,65 @@ async def send_welcome_email(email: str, name: str) -> bool:
     """
     
     return await send_email([email], subject, body, html_body)
+
+
+async def send_otp_email(email: str, otp_code: str, purpose: str = "signup") -> bool:
+    """
+    Send OTP verification email.
+    
+    Args:
+        email: Recipient email address
+        otp_code: 4-digit OTP code
+        purpose: Purpose of OTP (signup or login)
+        
+    Returns:
+        bool: True if email sent successfully
+    """
+    purpose_text = "create your account" if purpose == "signup" else "log in"
+    
+    subject = f"Your {purpose.capitalize()} Verification Code - Health Passport"
+    
+    body = f"""
+    Hello,
+    
+    Your verification code for Health Passport is: {otp_code}
+    
+    Use this code to {purpose_text}. This code will expire in 10 minutes.
+    
+    If you didn't request this code, please ignore this email.
+    
+    Best regards,
+    Health Passport Team
+    """
+    
+    html_body = f"""
+    <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #4F46E5;">Verification Code</h2>
+                <p>Hello,</p>
+                <p>Your verification code for Health Passport is:</p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <div style="background-color: #f3f4f6; border: 2px solid #4F46E5; 
+                                border-radius: 8px; padding: 20px; display: inline-block;">
+                        <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; 
+                                     color: #4F46E5; font-family: monospace;">
+                            {otp_code}
+                        </span>
+                    </div>
+                </div>
+                <p>Use this code to {purpose_text}. This code will expire in 10 minutes.</p>
+                <p style="color: #666; font-size: 14px;">
+                    If you didn't request this code, please ignore this email.
+                </p>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+                <p style="color: #999; font-size: 12px;">
+                    Best regards,<br>
+                    Health Passport Team
+                </p>
+            </div>
+        </body>
+    </html>
+    """
+    
+    return await send_email([email], subject, body, html_body)

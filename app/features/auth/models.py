@@ -1,6 +1,6 @@
 from beanie import Document, Indexed
 from pydantic import EmailStr, Field
-from typing import Optional
+from typing import Optional, Literal
 from datetime import datetime
 from app.shared.models import TimestampMixin
 
@@ -44,4 +44,18 @@ class PasswordReset(Document, TimestampMixin):
     
     class Settings:
         name = "password_resets"
+        use_state_management = True
+
+
+class EmailVerification(Document, TimestampMixin):
+    """Email verification OTP document model."""
+    
+    email: Indexed(EmailStr)
+    otp_code: str
+    expires_at: datetime
+    used: bool = False
+    purpose: Literal["signup", "login"] = "signup"
+    
+    class Settings:
+        name = "email_verifications"
         use_state_management = True
