@@ -4,22 +4,23 @@ from contextlib import asynccontextmanager
 from app.config import settings
 from app.database import Database
 from app.features.auth.router import router as auth_router
+from app.core.logging import logger
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifespan events for FastAPI application."""
     # Startup
-    print("🚀 Starting Health Passport API...")
+    logger.info("Starting Health Passport API...")
     await Database.connect_db()
-    print("✅ Application started successfully")
+    logger.info("Application started successfully")
     
     yield
     
     # Shutdown
-    print("🛑 Shutting down...")
+    logger.info("Shutting down...")
     await Database.close_db()
-    print("✅ Application shutdown complete")
+    logger.info("Application shutdown complete")
 
 
 # Create FastAPI application

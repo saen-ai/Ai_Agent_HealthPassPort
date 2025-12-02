@@ -2,6 +2,7 @@ import aiosmtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from app.config import settings
+from app.core.logging import logger
 from typing import List, Optional
 
 
@@ -50,7 +51,7 @@ async def send_email(
         
         return True
     except Exception as e:
-        print(f"❌ Failed to send email: {str(e)}")
+        logger.error(f"Failed to send email: {str(e)}")
         return False
 
 

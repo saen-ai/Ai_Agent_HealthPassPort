@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
     
+    # Logging
+    LOG_LEVEL: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
+    
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

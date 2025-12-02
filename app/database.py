@@ -2,6 +2,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from beanie import init_beanie
 from typing import Optional
 from app.config import settings
+from app.core.logging import logger
 
 
 class Database:
@@ -30,14 +31,14 @@ class Database:
             ]
         )
         
-        print(f"✅ Connected to MongoDB database: {settings.DATABASE_NAME}")
+        logger.info(f"Connected to MongoDB database: {settings.DATABASE_NAME}")
     
     @classmethod
     async def close_db(cls):
         """Close MongoDB connection."""
         if cls.client:
             cls.client.close()
-            print("❌ Closed MongoDB connection")
+            logger.info("Closed MongoDB connection")
 
 
 # Dependency for getting database connection

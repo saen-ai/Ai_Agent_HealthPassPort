@@ -19,6 +19,7 @@ from app.shared.exceptions import (
     CredentialsException,
     ConflictException
 )
+from app.core.logging import logger
 
 
 class AuthService:
@@ -66,7 +67,7 @@ class AuthService:
         try:
             await send_welcome_email(user.email, user.name)
         except Exception as e:
-            print(f"Failed to send welcome email: {str(e)}")
+            logger.error(f"Failed to send welcome email: {str(e)}")
         
         return user, access_token, clinic_id
     
@@ -128,7 +129,7 @@ class AuthService:
             await send_password_reset_email(email, token)
             return True
         except Exception as e:
-            print(f"Failed to send password reset email: {str(e)}")
+            logger.error(f"Failed to send password reset email: {str(e)}")
             return False
     
     @staticmethod
@@ -242,7 +243,7 @@ class AuthService:
             await send_otp_email(request.email, otp_code, "signup")
             return True
         except Exception as e:
-            print(f"Failed to send OTP email: {str(e)}")
+            logger.error(f"Failed to send OTP email: {str(e)}")
             return False
     
     @staticmethod
@@ -307,6 +308,6 @@ class AuthService:
         try:
             await send_welcome_email(user.email, user.name)
         except Exception as e:
-            print(f"Failed to send welcome email: {str(e)}")
+            logger.error(f"Failed to send welcome email: {str(e)}")
         
         return user, access_token, str(clinic.id)
