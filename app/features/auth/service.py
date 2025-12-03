@@ -195,6 +195,29 @@ class AuthService:
         return True
     
     @staticmethod
+    async def update_profile(user: User, update_data: dict) -> User:
+        """
+        Update user profile information.
+        
+        Args:
+            user: User document to update
+            update_data: Dictionary with fields to update (name, phone, specialization)
+        
+        Returns:
+            User: Updated user document
+        """
+        # Update only provided fields
+        if "name" in update_data and update_data["name"] is not None:
+            user.name = update_data["name"]
+        if "phone" in update_data:
+            user.phone = update_data["phone"]
+        if "specialization" in update_data:
+            user.specialization = update_data["specialization"]
+        
+        await user.save()
+        return user
+    
+    @staticmethod
     async def get_user_by_email(email: str) -> Optional[User]:
         """Get user by email."""
         return await User.find_one(User.email == email)

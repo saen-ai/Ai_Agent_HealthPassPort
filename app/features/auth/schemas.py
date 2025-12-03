@@ -73,6 +73,14 @@ class ChangePasswordRequest(BaseModel):
         return v
 
 
+class UpdateProfileRequest(BaseModel):
+    """Update profile request schema."""
+    
+    name: Optional[str] = Field(None, min_length=2, max_length=100)
+    phone: Optional[str] = None
+    specialization: Optional[str] = Field(None, max_length=200)
+
+
 class SendSignupOtpRequest(BaseModel):
     """Send signup OTP request schema."""
     
@@ -163,6 +171,7 @@ class UserResponse(BaseModel):
     email: EmailStr
     name: str
     phone: Optional[str] = None
+    specialization: Optional[str] = None
     role: str
     clinic_id: Optional[str] = None
     is_active: bool

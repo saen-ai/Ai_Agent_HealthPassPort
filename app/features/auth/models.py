@@ -12,6 +12,7 @@ class User(Document, TimestampMixin):
     password_hash: str
     name: str
     phone: Optional[str] = None
+    specialization: Optional[str] = None
     is_active: bool = True
     is_verified: bool = False
     

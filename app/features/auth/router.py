@@ -7,6 +7,7 @@ from app.features.auth.schemas import (
     ForgotPasswordRequest,
     ResetPasswordRequest,
     ChangePasswordRequest,
+    UpdateProfileRequest,
     MessageResponse,
     UserResponse,
     SendSignupOtpRequest,
@@ -42,6 +43,7 @@ async def signup(signup_data: SignupRequest):
             email=user.email,
             name=user.name,
             phone=user.phone,
+            specialization=user.specialization,
             role=user.role,
             clinic_id=clinic_id,
             is_active=user.is_active,
@@ -71,6 +73,7 @@ async def login(login_data: LoginRequest):
             email=user.email,
             name=user.name,
             phone=user.phone,
+            specialization=user.specialization,
             role=user.role,
             clinic_id=user.clinic_id,
             is_active=user.is_active,
@@ -155,12 +158,48 @@ async def get_current_user_info(current_user: User = Depends(get_current_user)):
         email=current_user.email,
         name=current_user.name,
         phone=current_user.phone,
+        specialization=current_user.specialization,
         role=current_user.role,
         clinic_id=current_user.clinic_id,
         is_active=current_user.is_active,
         is_verified=current_user.is_verified,
         created_at=current_user.created_at,
         updated_at=current_user.updated_at,
+    )
+
+
+@router.patch("/me", response_model=UserResponse)
+async def update_profile(
+    update_data: UpdateProfileRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Update current user's profile information.
+    
+    Requires authentication.
+    
+    - **name**: User's full name (optional)
+    - **phone**: User's phone number (optional)
+    - **specialization**: User's specialization (optional)
+    """
+    # Convert Pydantic model to dict, excluding None values
+    update_dict = update_data.model_dump(exclude_unset=True)
+    
+    # Update user profile
+    updated_user = await AuthService.update_profile(current_user, update_dict)
+    
+    return UserResponse(
+        id=str(updated_user.id),
+        email=updated_user.email,
+        name=updated_user.name,
+        phone=updated_user.phone,
+        specialization=updated_user.specialization,
+        role=updated_user.role,
+        clinic_id=updated_user.clinic_id,
+        is_active=updated_user.is_active,
+        is_verified=updated_user.is_verified,
+        created_at=updated_user.created_at,
+        updated_at=updated_user.updated_at,
     )
 
 
@@ -213,6 +252,7 @@ async def verify_signup_otp(request: VerifySignupOtpRequest):
             email=user.email,
             name=user.name,
             phone=user.phone,
+            specialization=user.specialization,
             role=user.role,
             clinic_id=clinic_id,
             is_active=user.is_active,
@@ -256,6 +296,7 @@ async def verify_login_otp(request: VerifyLoginOtpRequest):
             email=user.email,
             name=user.name,
             phone=user.phone,
+            specialization=user.specialization,
             role=user.role,
             clinic_id=user.clinic_id,
             is_active=user.is_active,
