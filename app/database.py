@@ -18,6 +18,7 @@ class Database:
         # Import all document models here
         from app.features.auth.models import User, PasswordReset, EmailVerification
         from app.features.clinic.models import Clinic
+        from app.features.patients.models import Patient
         
         # Initialize Beanie with document models
         await init_beanie(
@@ -27,6 +28,7 @@ class Database:
                 PasswordReset,
                 EmailVerification,
                 Clinic,
+                Patient,
                 # Add more models as features are implemented
             ]
         )

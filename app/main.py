@@ -6,6 +6,7 @@ from app.database import Database
 from app.features.auth.router import router as auth_router
 from app.features.files.router import router as files_router
 from app.features.clinic.router import router as clinic_router
+from app.features.patients.router import router as patients_router
 from app.core.logging import logger
 
 
@@ -46,6 +47,7 @@ app.add_middleware(
 app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
 app.include_router(files_router, prefix=settings.API_V1_PREFIX)
 app.include_router(clinic_router, prefix=settings.API_V1_PREFIX)
+app.include_router(patients_router, prefix=settings.API_V1_PREFIX)
 
 
 @app.get("/")
