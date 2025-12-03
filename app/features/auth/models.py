@@ -13,6 +13,7 @@ class User(Document, TimestampMixin):
     name: str
     phone: Optional[str] = None
     specialization: Optional[str] = None
+    profile_picture_url: Optional[str] = None
     is_active: bool = True
     is_verified: bool = False
     

@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     # Logging
     LOG_LEVEL: str = "INFO"  # DEBUG, INFO, WARNING, ERROR, CRITICAL
     
+    # GCP Storage Configuration
+    GCP_STORAGE_BUCKET_NAME: str = ""
+    GCP_PROJECT_ID: str = ""
+    GOOGLE_APPLICATION_CREDENTIALS: str = ""  # Path to service account JSON key file
+    
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

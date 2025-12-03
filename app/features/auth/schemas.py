@@ -172,6 +172,7 @@ class UserResponse(BaseModel):
     name: str
     phone: Optional[str] = None
     specialization: Optional[str] = None
+    profile_picture_url: Optional[str] = None
     role: str
     clinic_id: Optional[str] = None
     is_active: bool
