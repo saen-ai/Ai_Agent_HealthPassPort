@@ -181,6 +181,96 @@ async def send_welcome_email(email: str, name: str) -> bool:
     return await send_email([email], subject, body, html_body)
 
 
+async def send_patient_welcome_email(
+    email: str, 
+    name: str, 
+    patient_id: str, 
+    password: str, 
+    clinic_name: str
+) -> bool:
+    """
+    Send welcome email to new patients with their login credentials.
+    
+    Args:
+        email: Recipient email address
+        name: Patient's name
+        patient_id: Generated Patient ID
+        password: Initial password
+        clinic_name: Name of the clinic
+        
+    Returns:
+        bool: True if email sent successfully
+    """
+    subject = f"Welcome to {clinic_name} - Your Patient Portal Access"
+    
+    body = f"""
+    Hello {name},
+    
+    Your patient account has been created at {clinic_name}!
+    
+    You can now access your Patient Portal using the following credentials:
+    
+    Patient ID: {patient_id}
+    Password: {password}
+    
+    Please login at the Patient Portal to view your health records, lab results, and messages from your healthcare provider.
+    
+    For security, we recommend changing your password after your first login.
+    
+    If you have any questions, please contact {clinic_name}.
+    
+    Best regards,
+    {clinic_name}
+    """
+    
+    html_body = f"""
+    <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #0ea5e9;">Welcome to {clinic_name}!</h2>
+                <p>Hello {name},</p>
+                <p>Your patient account has been created! You can now access your Patient Portal.</p>
+                
+                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                    <h3 style="margin-top: 0; color: #334155;">Your Login Credentials</h3>
+                    <table style="width: 100%;">
+                        <tr>
+                            <td style="padding: 8px 0; color: #64748b;">Patient ID:</td>
+                            <td style="padding: 8px 0; font-weight: bold; font-family: monospace; font-size: 18px; color: #0ea5e9;">{patient_id}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px 0; color: #64748b;">Password:</td>
+                            <td style="padding: 8px 0; font-weight: bold; font-family: monospace; font-size: 18px;">{password}</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <p>Through the Patient Portal, you can:</p>
+                <ul style="color: #475569;">
+                    <li>View your health records</li>
+                    <li>Access lab results</li>
+                    <li>Message your healthcare provider</li>
+                    <li>See visit notes</li>
+                </ul>
+                
+                <p style="color: #dc2626; font-size: 14px;">
+                    <strong>Security Note:</strong> We recommend changing your password after your first login.
+                </p>
+                
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;">
+                <p style="color: #94a3b8; font-size: 12px;">
+                    If you have any questions, please contact {clinic_name}.<br>
+                    Best regards,<br>
+                    <strong>{clinic_name}</strong>
+                </p>
+            </div>
+        </body>
+    </html>
+    """
+    
+    return await send_email([email], subject, body, html_body)
+
+
 async def send_otp_email(email: str, otp_code: str, purpose: str = "signup") -> bool:
     """
     Send OTP verification email.

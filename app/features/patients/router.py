@@ -2,6 +2,7 @@
 
 from fastapi import APIRouter, Depends, status
 from typing import List
+from bson import ObjectId
 from app.features.patients.models import Patient
 from app.features.patients.schemas import (
     CreatePatientRequest,
@@ -171,8 +172,11 @@ async def get_current_patient_info(
     
     Requires patient authentication.
     """
-    # Get clinic info
-    clinic = await Clinic.get(current_patient.clinic_id)
+    # Get clinic info - use raw MongoDB query for _id lookup
+    try:
+        clinic = await Clinic.find_one({"_id": ObjectId(current_patient.clinic_id)})
+    except Exception:
+        clinic = None
     
     return PatientMeResponse(
         patient=PatientService.patient_to_response(current_patient),

@@ -2,6 +2,7 @@
 
 from typing import Optional, List
 from datetime import datetime
+from bson import ObjectId
 from app.features.patients.models import Patient
 from app.features.patients.schemas import (
     CreatePatientRequest,
@@ -13,6 +14,7 @@ from app.features.patients.schemas import (
 from app.features.clinic.models import Clinic
 from app.core.security import get_password_hash, verify_password, create_access_token
 from app.core.logging import logger
+from app.core.email import send_patient_welcome_email
 from app.shared.exceptions import NotFoundException, CredentialsException, ConflictException
 
 
@@ -28,7 +30,7 @@ class PatientService:
         return f"P{next_number:05d}"
     
     @staticmethod
-    async def create_patient(clinic_id: str, request: CreatePatientRequest) -> Patient:
+    async def create_patient(clinic_id: str, request: CreatePatientRequest, plain_password: Optional[str] = None) -> Patient:
         """Create a new patient for a clinic."""
         # Check if email already exists for this clinic
         existing_patient = await Patient.find_one(
@@ -40,6 +42,9 @@ class PatientService:
         
         # Generate unique patient ID
         patient_id = await PatientService.generate_patient_id(clinic_id)
+        
+        # Store plain password for email before hashing
+        password_for_email = plain_password or request.password
         
         # Hash the password
         password_hash = get_password_hash(request.password)
@@ -66,6 +71,27 @@ class PatientService:
         
         await patient.save()
         logger.info(f"Created patient {patient_id} for clinic {clinic_id}")
+        
+        # Get clinic name for email
+        try:
+            clinic = await Clinic.find_one({"_id": ObjectId(clinic_id)})
+            clinic_name = clinic.name if clinic else "Health Passport"
+        except Exception:
+            clinic_name = "Health Passport"
+        
+        # Send welcome email with credentials
+        try:
+            await send_patient_welcome_email(
+                email=request.email,
+                name=request.name,
+                patient_id=patient_id,
+                password=password_for_email,
+                clinic_name=clinic_name
+            )
+            logger.info(f"Sent welcome email to patient {patient_id}")
+        except Exception as e:
+            # Don't fail patient creation if email fails
+            logger.error(f"Failed to send welcome email to patient {patient_id}: {e}")
         
         return patient
     
@@ -160,8 +186,12 @@ class PatientService:
         if not verify_password(request.password, patient.password_hash):
             raise CredentialsException("Invalid Patient ID or password")
         
-        # Get clinic info
-        clinic = await Clinic.get(patient.clinic_id)
+        # Get clinic info - use raw MongoDB query for _id lookup
+        try:
+            clinic = await Clinic.find_one({"_id": ObjectId(patient.clinic_id)})
+        except Exception:
+            clinic = None
+        
         if not clinic:
             raise NotFoundException("Clinic not found")
         
