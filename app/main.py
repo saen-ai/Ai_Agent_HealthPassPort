@@ -61,3 +61,19 @@ async def health_check():
         "status": "healthy",
         "environment": settings.ENVIRONMENT,
     }
+
+
+@app.post("/test-email")
+async def test_email(email: str):
+    """Test email sending endpoint."""
+    from app.core.email import send_otp_email
+    
+    try:
+        result = await send_otp_email(email, "1234", "signup")
+        if result:
+            return {"success": True, "message": f"Test email sent to {email}. Check your inbox and spam folder."}
+        else:
+            return {"success": False, "message": "Failed to send email. Check server logs for details."}
+    except Exception as e:
+        logger.error(f"Test email error: {str(e)}")
+        return {"success": False, "message": f"Error: {str(e)}"}

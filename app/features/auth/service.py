@@ -4,7 +4,11 @@ from beanie import PydanticObjectId
 from beanie.operators import And
 from app.features.auth.models import User, PasswordReset, EmailVerification
 from app.features.clinic.models import Clinic
-from app.features.auth.schemas import SignupRequest, LoginRequest, UserResponse, SendSignupOtpRequest, VerifySignupOtpRequest
+from app.features.auth.schemas import (
+    SignupRequest, LoginRequest, UserResponse, 
+    SendSignupOtpRequest, VerifySignupOtpRequest,
+    SendLoginOtpRequest, VerifyLoginOtpRequest
+)
 from app.core.security import (
     verify_password,
     get_password_hash,
@@ -65,9 +69,11 @@ class AuthService:
         
         # Send welcome email (non-blocking)
         try:
+            logger.info(f"📧 Sending welcome email to {user.email}")
             await send_welcome_email(user.email, user.name)
+            logger.info(f"✅ Welcome email sent to {user.email}")
         except Exception as e:
-            logger.error(f"Failed to send welcome email: {str(e)}")
+            logger.error(f"❌ Failed to send welcome email to {user.email}: {str(e)}")
         
         return user, access_token, clinic_id
     
@@ -126,10 +132,12 @@ class AuthService:
         
         # Send reset email
         try:
+            logger.info(f"📧 Sending password reset email to {email}")
             await send_password_reset_email(email, token)
+            logger.info(f"✅ Password reset email sent to {email}")
             return True
         except Exception as e:
-            logger.error(f"Failed to send password reset email: {str(e)}")
+            logger.error(f"❌ Failed to send password reset email to {email}: {str(e)}")
             return False
     
     @staticmethod
@@ -239,12 +247,16 @@ class AuthService:
         await email_verification.insert()
         
         # Send OTP email
-        try:
-            await send_otp_email(request.email, otp_code, "signup")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to send OTP email: {str(e)}")
-            return False
+        logger.info(f"📧 Sending OTP code to {request.email} for signup")
+        logger.info(f"   Generated OTP: {otp_code}")
+        email_sent = await send_otp_email(request.email, otp_code, "signup")
+        if not email_sent:
+            logger.error(f"❌ Failed to send OTP email to {request.email}")
+            logger.error("   Check backend logs above for SMTP error details")
+            raise BadRequestException("Failed to send OTP email. Please check your email address and try again.")
+        
+        logger.info(f"✅ OTP code {otp_code} sent successfully to {request.email}")
+        return True
     
     @staticmethod
     async def verify_signup_otp(request: VerifySignupOtpRequest) -> tuple[User, str, str]:
@@ -254,6 +266,17 @@ class AuthService:
         Returns:
             tuple: (user, access_token, clinic_id)
         """
+        logger.info(f"🔍 Verifying OTP for {request.email}")
+        logger.info(f"   OTP code provided: {request.otp_code}")
+        
+        # Find all email verifications for this email (for debugging)
+        all_verifications = await EmailVerification.find(
+            EmailVerification.email == request.email
+        ).to_list()
+        logger.info(f"   Found {len(all_verifications)} verification(s) for this email")
+        for v in all_verifications:
+            logger.info(f"   - OTP: {v.otp_code}, Purpose: {v.purpose}, Used: {v.used}, Expires: {v.expires_at}")
+        
         # Find email verification
         email_verification = await EmailVerification.find_one(
             And(
@@ -265,11 +288,17 @@ class AuthService:
         )
         
         if not email_verification:
+            logger.error(f"❌ No matching OTP found for {request.email}")
+            logger.error(f"   Looking for: code={request.otp_code}, purpose=signup, used=False")
             raise BadRequestException("Invalid or expired OTP code")
         
         # Check if OTP is expired
         if email_verification.expires_at < datetime.utcnow():
+            logger.error(f"❌ OTP expired for {request.email}")
+            logger.error(f"   Expires at: {email_verification.expires_at}, Now: {datetime.utcnow()}")
             raise BadRequestException("OTP code has expired")
+        
+        logger.info(f"✅ OTP verified successfully for {request.email}")
         
         # Check if user already exists (race condition check)
         existing_user = await User.find_one(User.email == request.email)
@@ -306,8 +335,106 @@ class AuthService:
         
         # Send welcome email (non-blocking)
         try:
+            logger.info(f"📧 Sending welcome email to {user.email}")
             await send_welcome_email(user.email, user.name)
+            logger.info(f"✅ Welcome email sent to {user.email}")
         except Exception as e:
-            logger.error(f"Failed to send welcome email: {str(e)}")
+            logger.error(f"❌ Failed to send welcome email to {user.email}: {str(e)}")
         
         return user, access_token, str(clinic.id)
+    
+    @staticmethod
+    async def send_login_otp(request: SendLoginOtpRequest) -> bool:
+        """
+        Send OTP for login verification.
+        
+        Returns:
+            bool: True if OTP sent successfully
+        """
+        # Check if user exists
+        user = await User.find_one(User.email == request.email)
+        if not user:
+            raise NotFoundException("No account found with this email")
+        
+        # Check if user is active
+        if not user.is_active:
+            raise BadRequestException("Account is inactive")
+        
+        # Generate OTP
+        otp_code = generate_otp()
+        expires_at = datetime.utcnow() + timedelta(minutes=10)
+        
+        # Invalidate any existing OTPs for this email
+        existing_verifications = await EmailVerification.find(
+            And(
+                EmailVerification.email == request.email,
+                EmailVerification.purpose == "login",
+                EmailVerification.used == False
+            )
+        ).to_list()
+        
+        for verification in existing_verifications:
+            verification.used = True
+            await verification.save()
+        
+        # Create new email verification
+        email_verification = EmailVerification(
+            email=request.email,
+            otp_code=otp_code,
+            expires_at=expires_at,
+            purpose="login"
+        )
+        await email_verification.insert()
+        
+        # Send OTP email
+        logger.info(f"📧 Sending OTP code to {request.email} for login")
+        email_sent = await send_otp_email(request.email, otp_code, "login")
+        if not email_sent:
+            logger.error(f"❌ Failed to send OTP email to {request.email}")
+            raise BadRequestException("Failed to send OTP email. Please try again.")
+        
+        logger.info(f"✅ OTP code sent successfully to {request.email}")
+        return True
+    
+    @staticmethod
+    async def verify_login_otp(request: VerifyLoginOtpRequest) -> tuple[User, str]:
+        """
+        Verify OTP and authenticate user.
+        
+        Returns:
+            tuple: (user, access_token)
+        """
+        # Find email verification
+        email_verification = await EmailVerification.find_one(
+            And(
+                EmailVerification.email == request.email,
+                EmailVerification.otp_code == request.otp_code,
+                EmailVerification.purpose == "login",
+                EmailVerification.used == False
+            )
+        )
+        
+        if not email_verification:
+            raise BadRequestException("Invalid or expired OTP code")
+        
+        # Check if OTP is expired
+        if email_verification.expires_at < datetime.utcnow():
+            raise BadRequestException("OTP code has expired")
+        
+        # Find user
+        user = await User.find_one(User.email == request.email)
+        if not user:
+            raise NotFoundException("User not found")
+        
+        # Check if user is active
+        if not user.is_active:
+            raise BadRequestException("Account is inactive")
+        
+        # Mark OTP as used
+        email_verification.used = True
+        await email_verification.save()
+        
+        # Create access token
+        access_token = create_access_token(data={"sub": user.email, "user_id": str(user.id)})
+        
+        return user, access_token

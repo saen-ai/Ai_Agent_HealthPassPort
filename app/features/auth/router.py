@@ -11,6 +11,8 @@ from app.features.auth.schemas import (
     UserResponse,
     SendSignupOtpRequest,
     VerifySignupOtpRequest,
+    SendLoginOtpRequest,
+    VerifyLoginOtpRequest,
 )
 from app.features.auth.service import AuthService
 from app.features.auth.dependencies import get_current_user
@@ -192,7 +194,16 @@ async def verify_signup_otp(request: VerifySignupOtpRequest):
     - **password**: Strong password (min 8 chars, 1 uppercase, 1 lowercase, 1 digit)
     - **phone**: Optional phone number
     """
-    user, access_token, clinic_id = await AuthService.verify_signup_otp(request)
+    from app.core.logging import logger
+    logger.info(f"📥 Received verify-signup-otp request for {request.email}")
+    try:
+        user, access_token, clinic_id = await AuthService.verify_signup_otp(request)
+        logger.info(f"✅ Successfully verified OTP and created user for {request.email}")
+    except Exception as e:
+        logger.error(f"❌ Error in verify_signup_otp: {type(e).__name__}: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        raise
     
     return SignupResponse(
         access_token=access_token,
@@ -210,4 +221,46 @@ async def verify_signup_otp(request: VerifySignupOtpRequest):
             updated_at=user.updated_at,
         ),
         clinic_id=clinic_id,
+    )
+
+
+@router.post("/send-login-otp", response_model=MessageResponse)
+async def send_login_otp(request: SendLoginOtpRequest):
+    """
+    Send OTP code for login verification.
+    
+    - **email**: User's email address
+    """
+    await AuthService.send_login_otp(request)
+    
+    return MessageResponse(
+        message="OTP code has been sent to your email"
+    )
+
+
+@router.post("/verify-login-otp", response_model=LoginResponse)
+async def verify_login_otp(request: VerifyLoginOtpRequest):
+    """
+    Verify OTP code and authenticate user.
+    
+    - **email**: User's email address
+    - **otp_code**: 4-digit OTP code from email
+    """
+    user, access_token = await AuthService.verify_login_otp(request)
+    
+    return LoginResponse(
+        access_token=access_token,
+        token_type="bearer",
+        user=UserResponse(
+            id=str(user.id),
+            email=user.email,
+            name=user.name,
+            phone=user.phone,
+            role=user.role,
+            clinic_id=user.clinic_id,
+            is_active=user.is_active,
+            is_verified=user.is_verified,
+            created_at=user.created_at,
+            updated_at=user.updated_at,
+        ),
     )

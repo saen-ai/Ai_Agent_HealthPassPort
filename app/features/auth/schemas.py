@@ -109,8 +109,12 @@ class VerifySignupOtpRequest(BaseModel):
     @field_validator('otp_code')
     @classmethod
     def validate_otp(cls, v: str) -> str:
+        # Strip whitespace
+        v = v.strip()
         if not v.isdigit():
             raise ValueError('OTP code must be numeric')
+        if len(v) != 4:
+            raise ValueError('OTP code must be exactly 4 digits')
         return v
     
     @field_validator('password')
@@ -124,6 +128,30 @@ class VerifySignupOtpRequest(BaseModel):
             raise ValueError('Password must contain at least one lowercase letter')
         if not any(c.isdigit() for c in v):
             raise ValueError('Password must contain at least one digit')
+        return v
+
+
+class SendLoginOtpRequest(BaseModel):
+    """Send login OTP request schema."""
+    
+    email: EmailStr
+
+
+class VerifyLoginOtpRequest(BaseModel):
+    """Verify login OTP request schema."""
+    
+    email: EmailStr
+    otp_code: str = Field(..., min_length=4, max_length=4)
+    
+    @field_validator('otp_code')
+    @classmethod
+    def validate_otp(cls, v: str) -> str:
+        # Strip whitespace
+        v = v.strip()
+        if not v.isdigit():
+            raise ValueError('OTP code must be numeric')
+        if len(v) != 4:
+            raise ValueError('OTP code must be exactly 4 digits')
         return v
 
 

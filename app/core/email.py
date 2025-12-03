@@ -24,6 +24,9 @@ async def send_email(
     Returns:
         bool: True if email sent successfully
     """
+    logger.info(f"📧 Sending email to {', '.join(to)}")
+    logger.debug(f"SMTP: {settings.SMTP_HOST}:{settings.SMTP_PORT}, User: {settings.SMTP_USER}")
+    
     try:
         message = MIMEMultipart("alternative")
         message["From"] = settings.EMAIL_FROM
@@ -40,18 +43,31 @@ async def send_email(
             message.attach(html_part)
         
         # Send email
-        await aiosmtplib.send(
-            message,
-            hostname=settings.SMTP_HOST,
-            port=settings.SMTP_PORT,
-            username=settings.SMTP_USER,
-            password=settings.SMTP_PASSWORD,
-            start_tls=True,
-        )
-        
-        return True
+        try:
+            await aiosmtplib.send(
+                message,
+                hostname=settings.SMTP_HOST,
+                port=settings.SMTP_PORT,
+                username=settings.SMTP_USER,
+                password=settings.SMTP_PASSWORD,
+                start_tls=True,
+            )
+            logger.info(f"✅ Email sent successfully to {', '.join(to)}")
+            return True
+        except aiosmtplib.SMTPAuthenticationError as e:
+            logger.error(f"❌ SMTP Authentication failed: {str(e)}")
+            logger.error("⚠️  Check if you're using an App Password (not regular password) for Gmail")
+            logger.error(f"   SMTP User: {settings.SMTP_USER}")
+            logger.error(f"   SMTP Host: {settings.SMTP_HOST}:{settings.SMTP_PORT}")
+            return False
+        except aiosmtplib.SMTPException as e:
+            logger.error(f"❌ SMTP error sending email to {to}: {str(e)}")
+            logger.error(f"   Error type: {type(e).__name__}")
+            return False
     except Exception as e:
-        logger.error(f"Failed to send email: {str(e)}")
+        logger.error(f"❌ Failed to send email to {to}: {type(e).__name__}: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
         return False
 
 
