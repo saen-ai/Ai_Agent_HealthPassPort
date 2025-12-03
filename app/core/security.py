@@ -3,21 +3,33 @@ from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from app.config import settings
+from app.core.logging import logger
 import secrets
 
 
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Password hashing context - using Argon2 (modern, secure, no length limits)
+pwd_context = CryptContext(
+    schemes=["argon2", "bcrypt"],  # argon2 primary, bcrypt for backwards compat
+    deprecated="auto"
+)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against a hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except Exception as e:
+        logger.error(f"Password verification error: {type(e).__name__}: {str(e)}")
+        return False
 
 
 def get_password_hash(password: str) -> str:
-    """Hash a password."""
-    return pwd_context.hash(password)
+    """Hash a password using Argon2."""
+    try:
+        return pwd_context.hash(password)
+    except Exception as e:
+        logger.error(f"Password hashing error: {type(e).__name__}: {str(e)}")
+        raise
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
