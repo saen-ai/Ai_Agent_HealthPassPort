@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, UploadFile, File, status
 from app.features.files.service import FileService
 from app.features.auth.dependencies import get_current_user
 from app.features.auth.models import User
-from app.shared.exceptions import BadRequestException
+from app.features.clinic.models import Clinic
+from app.shared.exceptions import BadRequestException, NotFoundException
 from app.core.logging import logger
 
 router = APIRouter(prefix="/files", tags=["Files"])
@@ -49,4 +50,58 @@ async def upload_profile_picture(
         }
     except Exception as e:
         logger.error(f"Error in upload_profile_picture: {str(e)}")
+        raise
+
+
+@router.post("/upload-clinic-logo", status_code=status.HTTP_200_OK)
+async def upload_clinic_logo(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Upload clinic logo to GCP Storage.
+    Automatically deletes the previous logo if one exists.
+    
+    Requires authentication.
+    
+    - **file**: Image file (JPG or PNG, max 2MB)
+    
+    Returns:
+        dict: URL of uploaded logo
+    """
+    if not file.filename:
+        raise BadRequestException("No file provided")
+    
+    # Find the user's clinic
+    clinic = None
+    if current_user.clinic_id:
+        clinic = await Clinic.get(current_user.clinic_id)
+    
+    if not clinic:
+        clinic = await Clinic.find_one(Clinic.owner_id == str(current_user.id))
+    
+    if not clinic:
+        raise NotFoundException("Clinic not found")
+    
+    try:
+        old_logo_url = clinic.logo_url
+        
+        logo_url = await FileService.upload_clinic_logo(
+            file=file,
+            clinic_id=str(clinic.id),
+            old_logo_url=old_logo_url
+        )
+        
+        # Update clinic's logo_url
+        clinic.logo_url = logo_url
+        await clinic.save()
+        
+        logger.info(f"Clinic logo updated for clinic {clinic.id}")
+        
+        return {
+            "url": logo_url,
+            "message": "Clinic logo uploaded successfully"
+        }
+    except Exception as e:
+        logger.error(f"Error in upload_clinic_logo: {str(e)}")
         raise

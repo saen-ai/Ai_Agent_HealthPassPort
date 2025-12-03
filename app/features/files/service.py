@@ -240,3 +240,116 @@ class FileService:
                 raise BadRequestException(
                     f"Failed to upload image to GCP: {error_message}. Please check your GCP configuration."
                 )
+    
+    @classmethod
+    async def upload_clinic_logo(
+        cls,
+        file: UploadFile,
+        clinic_id: str,
+        old_logo_url: Optional[str] = None
+    ) -> str:
+        """
+        Upload clinic logo to GCP Storage.
+        Deletes the old logo if provided.
+        
+        Args:
+            file: Uploaded file
+            clinic_id: Clinic ID for organizing files
+            old_logo_url: URL of existing logo to delete
+        
+        Returns:
+            str: Signed URL of uploaded file
+        """
+        # Validate file type
+        allowed_types = ["image/jpeg", "image/jpg", "image/png"]
+        if file.content_type not in allowed_types:
+            raise BadRequestException(
+                "Invalid file type. Only JPG and PNG images are allowed."
+            )
+        
+        # Validate file size (2MB max for logos)
+        file_content = await file.read()
+        file_size_mb = len(file_content) / (1024 * 1024)
+        if file_size_mb > 2:
+            raise BadRequestException(
+                "File size exceeds 2MB limit. Please upload a smaller image."
+            )
+        
+        # Validate and optimize image
+        try:
+            image = Image.open(io.BytesIO(file_content))
+            # Convert to RGB if necessary (handles RGBA, P, etc.)
+            if image.mode in ("RGBA", "P"):
+                rgb_image = Image.new("RGB", image.size, (255, 255, 255))
+                if image.mode == "RGBA":
+                    rgb_image.paste(image, mask=image.split()[3])
+                else:
+                    rgb_image.paste(image)
+                image = rgb_image
+            
+            # Resize if too large (max 512x512 for logos)
+            max_size = 512
+            if image.width > max_size or image.height > max_size:
+                image.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+            
+            # Convert to bytes
+            output = io.BytesIO()
+            image_format = "JPEG"
+            image.save(output, format=image_format, quality=90, optimize=True)
+            file_content = output.getvalue()
+            
+        except Exception as e:
+            logger.error(f"Error processing logo image: {str(e)}")
+            raise BadRequestException("Invalid image file. Please upload a valid image.")
+        
+        # Generate unique filename
+        file_extension = "jpg"
+        unique_filename = f"clinic-logos/{clinic_id}/{uuid.uuid4()}.{file_extension}"
+        
+        # Upload to GCP
+        try:
+            client = cls.get_client()
+            bucket = client.bucket(settings.GCP_STORAGE_BUCKET_NAME)
+            
+            blob = bucket.blob(unique_filename)
+            blob.content_type = "image/jpeg"
+            blob.cache_control = "public, max-age=31536000"
+            
+            blob.upload_from_string(file_content, content_type="image/jpeg")
+            
+            # Generate signed URL
+            signed_url = blob.generate_signed_url(
+                version="v4",
+                expiration=timedelta(days=7),
+                method="GET"
+            )
+            
+            logger.info(f"Successfully uploaded clinic logo: {unique_filename}")
+            
+            # Delete old logo if provided
+            if old_logo_url:
+                deleted = await cls.delete_file(old_logo_url)
+                if deleted:
+                    logger.info(f"Deleted old clinic logo")
+                else:
+                    logger.warning(f"Could not delete old clinic logo")
+            
+            return signed_url
+            
+        except BadRequestException:
+            raise
+        except Exception as e:
+            logger.error(f"Error uploading clinic logo to GCP: {str(e)}")
+            error_message = str(e)
+            if "403" in error_message or "permission" in error_message.lower():
+                raise BadRequestException(
+                    "Permission denied. Please check that the service account has Storage Admin role on the bucket."
+                )
+            elif "404" in error_message or "not found" in error_message.lower():
+                raise BadRequestException(
+                    f"Bucket '{settings.GCP_STORAGE_BUCKET_NAME}' not found."
+                )
+            else:
+                raise BadRequestException(
+                    f"Failed to upload logo to GCP: {error_message}"
+                )

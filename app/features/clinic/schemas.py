@@ -1,7 +1,24 @@
-# Clinic schemas - To be implemented
-from pydantic import BaseModel
+# Clinic schemas
+from typing import Optional
+from datetime import datetime
+from pydantic import BaseModel, Field
 
 
-class ClinicBase(BaseModel):
-    """Base clinic schema - To be implemented."""
-    pass
+class ClinicResponse(BaseModel):
+    """Response schema for clinic data."""
+    id: str
+    name: str
+    owner_id: str
+    address: Optional[str] = ""
+    logo_url: Optional[str] = ""
+    primary_color: str = "#0ea5e9"
+    created_at: datetime
+    updated_at: datetime
+
+
+class UpdateClinicRequest(BaseModel):
+    """Request schema for updating clinic settings."""
+    name: Optional[str] = Field(None, min_length=1, max_length=100)
+    address: Optional[str] = Field(None, max_length=500)
+    logo_url: Optional[str] = None
+    primary_color: Optional[str] = Field(None, pattern=r'^#[0-9A-Fa-f]{6}$')
