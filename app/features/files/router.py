@@ -15,6 +15,7 @@ async def upload_profile_picture(
 ):
     """
     Upload profile picture to GCP Storage.
+    Automatically deletes the previous profile picture if one exists.
     
     Requires authentication.
     
@@ -27,9 +28,13 @@ async def upload_profile_picture(
         raise BadRequestException("No file provided")
     
     try:
+        # Get the old profile picture URL to delete after successful upload
+        old_profile_picture_url = current_user.profile_picture_url
+        
         public_url = await FileService.upload_profile_picture(
             file=file,
-            user_id=str(current_user.id)
+            user_id=str(current_user.id),
+            old_profile_picture_url=old_profile_picture_url
         )
         
         # Update user's profile_picture_url

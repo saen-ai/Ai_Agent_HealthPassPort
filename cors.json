@@ -1,0 +1,8 @@
+[
+  {
+    "origin": ["http://localhost:3000", "http://192.168.70.199:3000"],
+    "method": ["GET", "HEAD"],
+    "responseHeader": ["Content-Type", "Content-Length", "Content-Range"],
+    "maxAgeSeconds": 3600
+  }
+]

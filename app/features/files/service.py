@@ -1,8 +1,10 @@
 from typing import Optional
 import uuid
-from datetime import datetime, timedelta
+from datetime import timedelta
+from urllib.parse import urlparse
 from fastapi import UploadFile
 from google.cloud import storage
+from google.cloud.exceptions import NotFound
 from PIL import Image
 import io
 from app.config import settings
@@ -60,17 +62,71 @@ class FileService:
         return cls._client
     
     @classmethod
+    def extract_blob_path_from_url(cls, url: str) -> Optional[str]:
+        """Extract the blob path from a GCS URL (handles both public and signed URLs)."""
+        if not url:
+            return None
+        
+        try:
+            # Handle URLs like: 
+            # - https://storage.googleapis.com/bucket-name/path/to/file.jpg
+            # - https://storage.googleapis.com/bucket-name/path/to/file.jpg?Expires=...&Signature=...
+            parsed = urlparse(url)
+            if "storage.googleapis.com" in parsed.netloc:
+                # Path is /bucket-name/path/to/file.jpg (query params are ignored by urlparse)
+                path_parts = parsed.path.strip("/").split("/", 1)
+                if len(path_parts) > 1:
+                    return path_parts[1]  # Return path after bucket name
+            return None
+        except Exception as e:
+            logger.warning(f"Failed to extract blob path from URL: {e}")
+            return None
+    
+    @classmethod
+    async def delete_file(cls, url: str) -> bool:
+        """
+        Delete a file from GCP Storage by its URL.
+        
+        Args:
+            url: The public URL of the file to delete
+            
+        Returns:
+            bool: True if deleted successfully, False otherwise
+        """
+        blob_path = cls.extract_blob_path_from_url(url)
+        if not blob_path:
+            logger.warning(f"Could not extract blob path from URL: {url}")
+            return False
+        
+        try:
+            client = cls.get_client()
+            bucket = client.bucket(settings.GCP_STORAGE_BUCKET_NAME)
+            blob = bucket.blob(blob_path)
+            blob.delete()
+            logger.info(f"Successfully deleted file: {blob_path}")
+            return True
+        except NotFound:
+            logger.warning(f"File not found for deletion: {blob_path}")
+            return True  # Consider it successful if file doesn't exist
+        except Exception as e:
+            logger.error(f"Error deleting file {blob_path}: {e}")
+            return False
+    
+    @classmethod
     async def upload_profile_picture(
         cls,
         file: UploadFile,
-        user_id: str
+        user_id: str,
+        old_profile_picture_url: Optional[str] = None
     ) -> str:
         """
         Upload profile picture to GCP Storage.
+        Deletes the old profile picture if provided.
         
         Args:
             file: Uploaded file
             user_id: User ID for organizing files
+            old_profile_picture_url: URL of existing profile picture to delete
         
         Returns:
             str: Public URL of uploaded file
@@ -134,29 +190,37 @@ class FileService:
                     )
             except Exception as check_error:
                 # If we can't check existence due to permissions, log warning but continue
-                # The actual upload will fail if bucket doesn't exist or we don't have permissions
                 logger.warning(f"Could not verify bucket existence (may be permission issue): {str(check_error)}")
             
             blob = bucket.blob(unique_filename)
             
-            # Set content type and upload
+            # Set content type and cache control for better performance
             blob.content_type = "image/jpeg"
+            blob.cache_control = "public, max-age=31536000"  # Cache for 1 year
+            
+            # Upload the file
             blob.upload_from_string(file_content, content_type="image/jpeg")
             
-            # Try to make public (may fail if bucket doesn't allow public access)
-            try:
-                blob.make_public()
-                public_url = blob.public_url
-            except Exception as public_error:
-                logger.warning(f"Could not make blob public: {str(public_error)}. Using signed URL instead.")
-                # Generate signed URL (valid for 1 year)
-                public_url = blob.generate_signed_url(
-                    expiration=timedelta(days=365),
-                    method="GET"
-                )
+            # Generate a signed URL that works regardless of bucket-level access settings
+            # The signed URL is valid for 7 days - after that, a new URL will be generated
+            # when the user uploads a new picture or refreshes their session
+            signed_url = blob.generate_signed_url(
+                version="v4",
+                expiration=timedelta(days=7),  # 7 days expiry
+                method="GET"
+            )
             
-            logger.info(f"Successfully uploaded profile picture: {public_url}")
-            return public_url
+            logger.info(f"Successfully uploaded profile picture with signed URL: {unique_filename}")
+            
+            # Delete old profile picture if provided (do this after successful upload)
+            if old_profile_picture_url:
+                deleted = await cls.delete_file(old_profile_picture_url)
+                if deleted:
+                    logger.info(f"Deleted old profile picture")
+                else:
+                    logger.warning(f"Could not delete old profile picture")
+            
+            return signed_url
             
         except BadRequestException:
             # Re-raise BadRequestException as-is
