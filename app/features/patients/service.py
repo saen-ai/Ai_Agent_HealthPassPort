@@ -233,11 +233,18 @@ class PatientService:
     @staticmethod
     def clinic_to_info(clinic: Clinic) -> ClinicInfo:
         """Convert Clinic model to ClinicInfo schema."""
+        # Get primary_color, handling both primary_color and color_theme fields
+        primary_color = getattr(clinic, 'primary_color', None) or getattr(clinic, 'color_theme', None) or "#0ea5e9"
+        
+        # Ensure color is properly formatted (with #)
+        if primary_color and not primary_color.startswith('#'):
+            primary_color = '#' + primary_color
+        
         return ClinicInfo(
             id=str(clinic.id),
             name=clinic.name,
             logo_url=clinic.logo_url,
-            primary_color=clinic.primary_color or "#0ea5e9",
+            primary_color=primary_color,
             address=clinic.address,
         )
     
