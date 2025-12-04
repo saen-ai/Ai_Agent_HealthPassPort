@@ -229,6 +229,7 @@ class PatientService:
             medications=patient.medications or [],
             allergies=patient.allergies or [],
             is_active=patient.is_active,
+            notifications_enabled=patient.notifications_enabled,
             created_at=patient.created_at,
             updated_at=patient.updated_at,
         )

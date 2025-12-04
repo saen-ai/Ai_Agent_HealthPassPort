@@ -15,6 +15,7 @@ from app.features.patients.schemas import (
     CreatePatientResponse,
     PatientForgotPasswordRequest,
     PatientResetPasswordRequest,
+    NotificationSettingsRequest,
     MessageResponse,
 )
 from app.features.patients.service import PatientService
@@ -218,3 +219,21 @@ async def get_current_patient_info(
         patient=PatientService.patient_to_response(current_patient),
         clinic=PatientService.clinic_to_info(clinic) if clinic else None,
     )
+
+
+@router.patch("/auth/notification-settings", response_model=PatientResponse)
+async def update_patient_notification_settings(
+    settings: NotificationSettingsRequest,
+    current_patient: Patient = Depends(get_current_patient)
+):
+    """
+    Update current patient's notification preferences.
+    
+    Requires patient authentication.
+    
+    - **notifications_enabled**: Enable or disable browser notifications
+    """
+    current_patient.notifications_enabled = settings.notifications_enabled
+    await current_patient.save()
+    
+    return PatientService.patient_to_response(current_patient)

@@ -64,6 +64,7 @@ class PatientResponse(BaseModel):
     medications: List[dict] = []
     allergies: List[str] = []
     is_active: bool
+    notifications_enabled: bool = True
     created_at: datetime
     updated_at: datetime
 
@@ -128,6 +129,13 @@ class PatientResetPasswordRequest(BaseModel):
     """Request schema for patient password reset."""
     token: str = Field(..., description="Password reset token from email")
     new_password: str = Field(..., min_length=8, description="New password (min 8 characters)")
+
+
+# ============== Notification Settings ==============
+
+class NotificationSettingsRequest(BaseModel):
+    """Notification settings request schema."""
+    notifications_enabled: bool = Field(..., description="Enable or disable browser notifications")
 
 
 # ============== Message Response ==============

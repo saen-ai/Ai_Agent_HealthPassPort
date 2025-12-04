@@ -81,6 +81,12 @@ class UpdateProfileRequest(BaseModel):
     specialization: Optional[str] = Field(None, max_length=200)
 
 
+class NotificationSettingsRequest(BaseModel):
+    """Notification settings request schema."""
+    
+    notifications_enabled: bool = Field(..., description="Enable or disable browser notifications")
+
+
 class SendSignupOtpRequest(BaseModel):
     """Send signup OTP request schema."""
     
@@ -177,6 +183,7 @@ class UserResponse(BaseModel):
     clinic_id: Optional[str] = None
     is_active: bool
     is_verified: bool
+    notifications_enabled: bool = True
     created_at: datetime
     updated_at: datetime
     

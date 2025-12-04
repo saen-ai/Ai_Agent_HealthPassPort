@@ -8,6 +8,7 @@ from app.features.auth.schemas import (
     ResetPasswordRequest,
     ChangePasswordRequest,
     UpdateProfileRequest,
+    NotificationSettingsRequest,
     MessageResponse,
     UserResponse,
     SendSignupOtpRequest,
@@ -49,6 +50,7 @@ async def signup(signup_data: SignupRequest):
             clinic_id=clinic_id,
             is_active=user.is_active,
             is_verified=user.is_verified,
+            notifications_enabled=user.notifications_enabled,
             created_at=user.created_at,
             updated_at=user.updated_at,
         ),
@@ -80,6 +82,7 @@ async def login(login_data: LoginRequest):
             clinic_id=user.clinic_id,
             is_active=user.is_active,
             is_verified=user.is_verified,
+            notifications_enabled=user.notifications_enabled,
             created_at=user.created_at,
             updated_at=user.updated_at,
         ),
@@ -166,6 +169,7 @@ async def get_current_user_info(current_user: User = Depends(get_current_user)):
         clinic_id=current_user.clinic_id,
         is_active=current_user.is_active,
         is_verified=current_user.is_verified,
+        notifications_enabled=current_user.notifications_enabled,
         created_at=current_user.created_at,
         updated_at=current_user.updated_at,
     )
@@ -202,8 +206,41 @@ async def update_profile(
         clinic_id=updated_user.clinic_id,
         is_active=updated_user.is_active,
         is_verified=updated_user.is_verified,
+        notifications_enabled=updated_user.notifications_enabled,
         created_at=updated_user.created_at,
         updated_at=updated_user.updated_at,
+    )
+
+
+@router.patch("/notification-settings", response_model=UserResponse)
+async def update_notification_settings(
+    settings: NotificationSettingsRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Update current user's notification preferences.
+    
+    Requires authentication.
+    
+    - **notifications_enabled**: Enable or disable browser notifications
+    """
+    current_user.notifications_enabled = settings.notifications_enabled
+    await current_user.save()
+    
+    return UserResponse(
+        id=str(current_user.id),
+        email=current_user.email,
+        name=current_user.name,
+        phone=current_user.phone,
+        specialization=current_user.specialization,
+        profile_picture_url=current_user.profile_picture_url,
+        role=current_user.role,
+        clinic_id=current_user.clinic_id,
+        is_active=current_user.is_active,
+        is_verified=current_user.is_verified,
+        notifications_enabled=current_user.notifications_enabled,
+        created_at=current_user.created_at,
+        updated_at=current_user.updated_at,
     )
 
 
@@ -262,6 +299,7 @@ async def verify_signup_otp(request: VerifySignupOtpRequest):
             clinic_id=clinic_id,
             is_active=user.is_active,
             is_verified=user.is_verified,
+            notifications_enabled=user.notifications_enabled,
             created_at=user.created_at,
             updated_at=user.updated_at,
         ),
@@ -307,6 +345,7 @@ async def verify_login_otp(request: VerifyLoginOtpRequest):
             clinic_id=user.clinic_id,
             is_active=user.is_active,
             is_verified=user.is_verified,
+            notifications_enabled=user.notifications_enabled,
             created_at=user.created_at,
             updated_at=user.updated_at,
         ),

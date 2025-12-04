@@ -21,6 +21,9 @@ class User(Document, TimestampMixin):
     role: str = "admin"  # For Phase 1, all users are admin
     clinic_id: Optional[str] = None  # Will be populated after clinic creation
     
+    # Notification preferences
+    notifications_enabled: bool = True  # Enable/disable browser notifications
+    
     class Settings:
         name = "users"
         use_state_management = True

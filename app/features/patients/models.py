@@ -43,6 +43,9 @@ class Patient(Document, TimestampMixin):
     # Status
     is_active: bool = True
     
+    # Notification preferences
+    notifications_enabled: bool = True  # Enable/disable browser notifications
+    
     class Settings:
         name = "patients"
         use_state_management = True
