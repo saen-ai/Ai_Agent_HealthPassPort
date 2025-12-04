@@ -125,11 +125,11 @@ async def delete_patient(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Deactivate a patient (soft delete).
+    Permanently delete a patient from the database.
     
     Requires doctor/admin authentication.
     
-    The patient record is not deleted, only marked as inactive.
+    WARNING: This action cannot be undone. The patient record will be completely removed.
     """
     if not current_user.clinic_id:
         from app.shared.exceptions import BadRequestException
@@ -137,7 +137,7 @@ async def delete_patient(
     
     await PatientService.delete_patient(patient_id, current_user.clinic_id)
     
-    return MessageResponse(message=f"Patient {patient_id} has been deactivated")
+    return MessageResponse(message=f"Patient {patient_id} has been permanently deleted")
 
 
 # ============== Patient Authentication Endpoints (No Auth Required) ==============

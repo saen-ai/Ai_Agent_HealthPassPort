@@ -161,14 +161,12 @@ class PatientService:
     
     @staticmethod
     async def delete_patient(patient_id: str, clinic_id: str) -> None:
-        """Soft delete a patient (set is_active to False)."""
+        """Permanently delete a patient from the database."""
         patient = await PatientService.get_patient_by_id(patient_id, clinic_id)
         
-        patient.is_active = False
-        patient.updated_at = datetime.utcnow()
-        await patient.save()
+        await patient.delete()
         
-        logger.info(f"Soft deleted patient {patient_id}")
+        logger.info(f"Permanently deleted patient {patient_id}")
     
     @staticmethod
     async def patient_login(request: PatientLoginRequest) -> tuple[Patient, str, Clinic]:
