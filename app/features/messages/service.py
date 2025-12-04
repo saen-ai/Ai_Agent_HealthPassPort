@@ -428,19 +428,21 @@ class MessageService:
     @staticmethod
     async def get_unread_count_for_doctor(clinic_id: str) -> int:
         """Get total unread message count for a doctor across all conversations."""
-        result = await Conversation.find(
+        conversations = await Conversation.find(
             Conversation.clinic_id == clinic_id,
             Conversation.is_active == True
-        ).sum("doctor_unread_count")
+        ).to_list()
         
-        return result or 0
+        total = sum(conv.doctor_unread_count for conv in conversations)
+        return total
     
     @staticmethod
     async def get_unread_count_for_patient(patient_id: str) -> int:
         """Get total unread message count for a patient across all conversations."""
-        result = await Conversation.find(
+        conversations = await Conversation.find(
             Conversation.patient_id == patient_id,
             Conversation.is_active == True
-        ).sum("patient_unread_count")
+        ).to_list()
         
-        return result or 0
+        total = sum(conv.patient_unread_count for conv in conversations)
+        return total
