@@ -3,7 +3,7 @@
 from typing import Optional, List
 from datetime import datetime
 from bson import ObjectId
-from app.features.patients.models import Patient
+from app.features.patients.models import Patient, PatientPasswordReset
 from app.features.patients.schemas import (
     CreatePatientRequest,
     UpdatePatientRequest,
@@ -12,10 +12,11 @@ from app.features.patients.schemas import (
     ClinicInfo,
 )
 from app.features.clinic.models import Clinic
-from app.core.security import get_password_hash, verify_password, create_access_token
+from app.core.security import get_password_hash, verify_password, create_access_token, generate_reset_token
 from app.core.logging import logger
-from app.core.email import send_patient_welcome_email
-from app.shared.exceptions import NotFoundException, CredentialsException, ConflictException
+from app.core.email import send_patient_welcome_email, send_patient_password_reset_email
+from app.shared.exceptions import NotFoundException, CredentialsException, ConflictException, BadRequestException
+from datetime import datetime, timedelta
 
 
 class PatientService:
@@ -239,3 +240,106 @@ class PatientService:
             primary_color=clinic.primary_color or "#0ea5e9",
             address=clinic.address,
         )
+    
+    @staticmethod
+    async def forgot_password(patient_id: str, email: str) -> bool:
+        """
+        Generate password reset token and send email to patient.
+        
+        Args:
+            patient_id: Patient ID
+            email: Patient's email address
+            
+        Returns:
+            bool: True if email sent successfully (or patient not found for security)
+        """
+        # Find patient by patient_id and email (both must match)
+        patient = await Patient.find_one(
+            Patient.patient_id == patient_id,
+            Patient.email == email,
+            Patient.is_active == True
+        )
+        
+        if not patient:
+            # Don't reveal if patient exists or not for security
+            logger.info(f"Password reset requested for patient_id={patient_id}, email={email} - not found")
+            return True
+        
+        # Generate reset token
+        token = generate_reset_token()
+        expires_at = datetime.utcnow() + timedelta(hours=1)
+        
+        # Save reset token
+        password_reset = PatientPasswordReset(
+            patient_id=patient.patient_id,
+            email=email,
+            token=token,
+            expires_at=expires_at,
+        )
+        await password_reset.insert()
+        
+        # Get clinic name for email
+        try:
+            clinic = await Clinic.find_one({"_id": ObjectId(patient.clinic_id)})
+            clinic_name = clinic.name if clinic else "Health Passport"
+        except Exception:
+            clinic_name = "Health Passport"
+        
+        # Send reset email
+        try:
+            logger.info(f"📧 Sending password reset email to patient {patient_id} at {email}")
+            await send_patient_password_reset_email(
+                email=email,
+                reset_token=token,
+                patient_id=patient_id,
+                clinic_name=clinic_name
+            )
+            logger.info(f"✅ Password reset email sent to patient {patient_id}")
+            return True
+        except Exception as e:
+            logger.error(f"❌ Failed to send password reset email to patient {patient_id}: {str(e)}")
+            return False
+    
+    @staticmethod
+    async def reset_password(token: str, new_password: str) -> bool:
+        """
+        Reset patient password using token.
+        
+        Args:
+            token: Password reset token from email
+            new_password: New password
+            
+        Returns:
+            bool: True if password reset successfully
+        """
+        # Find reset token
+        password_reset = await PatientPasswordReset.find_one(
+            PatientPasswordReset.token == token,
+            PatientPasswordReset.used == False
+        )
+        
+        if not password_reset:
+            raise BadRequestException("Invalid or expired reset token")
+        
+        # Check if token is expired
+        if password_reset.expires_at < datetime.utcnow():
+            raise BadRequestException("Reset token has expired")
+        
+        # Find patient
+        patient = await Patient.find_one(
+            Patient.patient_id == password_reset.patient_id,
+            Patient.email == password_reset.email
+        )
+        if not patient:
+            raise NotFoundException("Patient not found")
+        
+        # Update password
+        patient.password_hash = get_password_hash(new_password)
+        await patient.save()
+        
+        # Mark token as used
+        password_reset.used = True
+        await password_reset.save()
+        
+        logger.info(f"Password reset successful for patient {patient.patient_id}")
+        return True

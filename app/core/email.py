@@ -331,3 +331,83 @@ async def send_otp_email(email: str, otp_code: str, purpose: str = "signup") -> 
     """
     
     return await send_email([email], subject, body, html_body)
+
+
+async def send_patient_password_reset_email(
+    email: str, 
+    reset_token: str, 
+    patient_id: str,
+    clinic_name: str = "Health Passport"
+) -> bool:
+    """
+    Send password reset email to patient.
+    
+    Args:
+        email: Recipient email address
+        reset_token: Password reset token
+        patient_id: Patient ID for reference
+        clinic_name: Name of the clinic
+        
+    Returns:
+        bool: True if email sent successfully
+    """
+    reset_link = f"http://localhost:3001/reset-password?token={reset_token}"
+    
+    subject = f"Reset Your Password - {clinic_name}"
+    
+    body = f"""
+    Hello,
+    
+    You requested to reset your password for your patient account at {clinic_name}.
+    
+    Your Patient ID: {patient_id}
+    
+    Click the link below to reset your password:
+    {reset_link}
+    
+    This link will expire in 1 hour.
+    
+    If you didn't request this, please ignore this email.
+    
+    Best regards,
+    {clinic_name}
+    """
+    
+    html_body = f"""
+    <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #0ea5e9;">Reset Your Password</h2>
+                <p>Hello,</p>
+                <p>You requested to reset your password for your patient account at <strong>{clinic_name}</strong>.</p>
+                
+                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                    <p style="margin: 0; color: #64748b;">Your Patient ID:</p>
+                    <p style="margin: 5px 0 0 0; font-weight: bold; font-family: monospace; font-size: 18px; color: #0ea5e9;">{patient_id}</p>
+                </div>
+                
+                <p>Click the button below to reset your password:</p>
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{reset_link}" 
+                       style="background-color: #0ea5e9; color: white; padding: 12px 30px; 
+                              text-decoration: none; border-radius: 5px; display: inline-block;">
+                        Reset Password
+                    </a>
+                </div>
+                <p style="color: #666; font-size: 14px;">
+                    This link will expire in 1 hour.
+                </p>
+                <p style="color: #666; font-size: 14px;">
+                    If you didn't request this, please ignore this email.
+                </p>
+                <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+                <p style="color: #999; font-size: 12px;">
+                    Best regards,<br>
+                    <strong>{clinic_name}</strong>
+                </p>
+            </div>
+        </body>
+    </html>
+    """
+    
+    return await send_email([email], subject, body, html_body)

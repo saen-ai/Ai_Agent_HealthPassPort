@@ -116,6 +116,20 @@ class CreatePatientResponse(BaseModel):
     message: str = "Patient created successfully"
 
 
+# ============== Patient Password Reset ==============
+
+class PatientForgotPasswordRequest(BaseModel):
+    """Request schema for patient forgot password."""
+    patient_id: str = Field(..., description="Patient ID (e.g., P00001)")
+    email: EmailStr = Field(..., description="Patient's email address")
+
+
+class PatientResetPasswordRequest(BaseModel):
+    """Request schema for patient password reset."""
+    token: str = Field(..., description="Password reset token from email")
+    new_password: str = Field(..., min_length=8, description="New password (min 8 characters)")
+
+
 # ============== Message Response ==============
 
 class MessageResponse(BaseModel):

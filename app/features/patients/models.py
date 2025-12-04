@@ -1,7 +1,7 @@
 # Patient Management Feature - Models
 
 from typing import Optional, List
-from datetime import date
+from datetime import date, datetime
 from beanie import Document, Indexed
 from pydantic import EmailStr, Field
 from app.shared.models import TimestampMixin
@@ -66,3 +66,17 @@ class Patient(Document, TimestampMixin):
                 "is_active": True
             }
         }
+
+
+class PatientPasswordReset(Document, TimestampMixin):
+    """Patient password reset token document model."""
+    
+    patient_id: str
+    email: EmailStr
+    token: Indexed(str, unique=True)
+    expires_at: datetime
+    used: bool = False
+    
+    class Settings:
+        name = "patient_password_resets"
+        use_state_management = True

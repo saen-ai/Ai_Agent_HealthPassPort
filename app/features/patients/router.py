@@ -13,6 +13,8 @@ from app.features.patients.schemas import (
     PatientLoginResponse,
     PatientMeResponse,
     CreatePatientResponse,
+    PatientForgotPasswordRequest,
+    PatientResetPasswordRequest,
     MessageResponse,
 )
 from app.features.patients.service import PatientService
@@ -159,6 +161,40 @@ async def patient_login(request: PatientLoginRequest):
         patient=PatientService.patient_to_response(patient),
         clinic=PatientService.clinic_to_info(clinic),
     )
+
+
+@router.post("/auth/forgot-password", response_model=MessageResponse)
+async def patient_forgot_password(request: PatientForgotPasswordRequest):
+    """
+    Send password reset email to patient.
+    
+    No authentication required.
+    
+    - **patient_id**: Patient ID (e.g., P00001)
+    - **email**: Patient's email address
+    
+    Note: For security, this endpoint always returns success even if patient is not found.
+    """
+    await PatientService.forgot_password(request.patient_id, request.email)
+    
+    return MessageResponse(
+        message="If your Patient ID and email match our records, a password reset link has been sent to your email"
+    )
+
+
+@router.post("/auth/reset-password", response_model=MessageResponse)
+async def patient_reset_password(request: PatientResetPasswordRequest):
+    """
+    Reset patient password using token from email.
+    
+    No authentication required.
+    
+    - **token**: Password reset token from email
+    - **new_password**: New password (min 8 characters)
+    """
+    await PatientService.reset_password(request.token, request.new_password)
+    
+    return MessageResponse(message="Password reset successfully")
 
 
 # ============== Patient Authenticated Endpoints ==============
