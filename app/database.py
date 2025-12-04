@@ -20,6 +20,7 @@ class Database:
         from app.features.clinic.models import Clinic
         from app.features.patients.models import Patient, PatientPasswordReset
         from app.features.messages.models import Conversation, Message, PushSubscription
+        from app.features.notes.models import Note
         
         # Initialize Beanie with document models
         await init_beanie(
@@ -34,6 +35,7 @@ class Database:
                 Conversation,
                 Message,
                 PushSubscription,
+                Note,
             ]
         )
         

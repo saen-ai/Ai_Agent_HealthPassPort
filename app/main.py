@@ -8,6 +8,7 @@ from app.features.files.router import router as files_router
 from app.features.clinic.router import router as clinic_router
 from app.features.patients.router import router as patients_router
 from app.features.messages.router import router as messages_router
+from app.features.notes.router import router as notes_router
 from app.features.messages.socket import sio, socket_app
 from app.features.messages.service import MessageService
 from app.core.logging import logger
@@ -56,6 +57,7 @@ app.include_router(files_router, prefix=settings.API_V1_PREFIX)
 app.include_router(clinic_router, prefix=settings.API_V1_PREFIX)
 app.include_router(patients_router, prefix=settings.API_V1_PREFIX)
 app.include_router(messages_router, prefix=settings.API_V1_PREFIX)
+app.include_router(notes_router, prefix=settings.API_V1_PREFIX)
 
 # Mount Socket.IO application
 app.mount("/socket.io", socket_app)
