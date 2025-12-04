@@ -42,20 +42,27 @@ async def authenticate_socket(auth_data: Optional[Dict]) -> Optional[Dict]:
     payload = decode_token(token)
     
     if not payload:
-        logger.warning("Socket connection with invalid token")
+        logger.warning("Socket connection with invalid token - decode failed")
         return None
     
     # Check if it's a patient or doctor token
     user_type = payload.get("type", "user")
+    logger.info(f"Socket auth - user_type: {user_type}, payload keys: {payload.keys()}")
     
     if user_type == "patient":
         # Patient token
         patient_id = payload.get("patient_id")
         if not patient_id:
+            logger.warning("Socket auth - patient token missing patient_id")
             return None
         
         patient = await Patient.find_one(Patient.patient_id == patient_id)
         if not patient:
+            logger.warning(f"Socket auth - patient not found: {patient_id}")
+            return None
+        
+        if not patient.is_active:
+            logger.warning(f"Socket auth - patient inactive: {patient_id}")
             return None
         
         return {
@@ -68,14 +75,17 @@ async def authenticate_socket(auth_data: Optional[Dict]) -> Optional[Dict]:
         # Doctor token
         user_id = payload.get("user_id")
         if not user_id:
+            logger.warning("Socket auth - doctor token missing user_id")
             return None
         
         try:
             user = await User.get(ObjectId(user_id))
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Socket auth - error getting user: {e}")
             return None
         
         if not user:
+            logger.warning(f"Socket auth - user not found: {user_id}")
             return None
         
         return {
@@ -89,10 +99,14 @@ async def authenticate_socket(auth_data: Optional[Dict]) -> Optional[Dict]:
 @sio.event
 async def connect(sid, environ, auth):
     """Handle client connection."""
-    logger.info(f"Socket connection attempt: {sid}")
+    logger.info(f"Socket connection attempt: {sid}, auth data: {auth}")
     
     # Authenticate
-    user_info = await authenticate_socket(auth)
+    try:
+        user_info = await authenticate_socket(auth)
+    except Exception as e:
+        logger.error(f"Socket authentication error: {e}")
+        return False
     
     if not user_info:
         logger.warning(f"Socket authentication failed: {sid}")
