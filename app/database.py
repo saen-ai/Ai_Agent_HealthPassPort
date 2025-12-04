@@ -19,7 +19,7 @@ class Database:
         from app.features.auth.models import User, PasswordReset, EmailVerification
         from app.features.clinic.models import Clinic
         from app.features.patients.models import Patient, PatientPasswordReset
-        from app.features.messages.models import Conversation, Message
+        from app.features.messages.models import Conversation, Message, PushSubscription
         
         # Initialize Beanie with document models
         await init_beanie(
@@ -33,6 +33,7 @@ class Database:
                 PatientPasswordReset,
                 Conversation,
                 Message,
+                PushSubscription,
             ]
         )
         
