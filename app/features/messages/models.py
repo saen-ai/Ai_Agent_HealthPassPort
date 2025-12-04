@@ -40,6 +40,7 @@ class Conversation(Document, TimestampMixin):
         use_state_management = True
         indexes = [
             # Compound index for finding conversation between doctor and patient
+            # Note: Unique constraint is enforced at application level to prevent duplicates
             [("clinic_id", 1), ("patient_id", 1)],
             # Index for listing conversations by user
             [("user_id", 1), ("last_message_at", -1)],

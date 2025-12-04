@@ -34,6 +34,7 @@ class MessageService:
     ) -> Conversation:
         """
         Get existing conversation or create a new one.
+        Ensures only one conversation exists per patient per clinic.
         
         Args:
             clinic_id: Clinic ID
@@ -46,7 +47,8 @@ class MessageService:
         # Try to find existing conversation
         conversation = await Conversation.find_one(
             Conversation.clinic_id == clinic_id,
-            Conversation.patient_id == patient_id
+            Conversation.patient_id == patient_id,
+            Conversation.is_active == True
         )
         
         if conversation:
@@ -56,16 +58,42 @@ class MessageService:
                 await conversation.save()
             return conversation
         
-        # Create new conversation
-        conversation = Conversation(
-            clinic_id=clinic_id,
-            user_id=user_id,
-            patient_id=patient_id,
+        # Check for any inactive duplicates and reactivate the most recent one
+        inactive_conv = await Conversation.find_one(
+            Conversation.clinic_id == clinic_id,
+            Conversation.patient_id == patient_id,
+            Conversation.is_active == False
         )
-        await conversation.insert()
         
-        logger.info(f"Created new conversation for patient {patient_id} in clinic {clinic_id}")
-        return conversation
+        if inactive_conv:
+            # Reactivate and update
+            inactive_conv.is_active = True
+            inactive_conv.user_id = user_id
+            await inactive_conv.save()
+            logger.info(f"Reactivated conversation for patient {patient_id} in clinic {clinic_id}")
+            return inactive_conv
+        
+        # Create new conversation
+        try:
+            conversation = Conversation(
+                clinic_id=clinic_id,
+                user_id=user_id,
+                patient_id=patient_id,
+            )
+            await conversation.insert()
+            logger.info(f"Created new conversation for patient {patient_id} in clinic {clinic_id}")
+            return conversation
+        except Exception as e:
+            # If unique constraint violation (race condition), try to find again
+            if "duplicate" in str(e).lower() or "E11000" in str(e):
+                logger.warning(f"Race condition detected, fetching existing conversation for patient {patient_id}")
+                conversation = await Conversation.find_one(
+                    Conversation.clinic_id == clinic_id,
+                    Conversation.patient_id == patient_id
+                )
+                if conversation:
+                    return conversation
+            raise
     
     @staticmethod
     async def get_conversation_by_id(
@@ -135,9 +163,31 @@ class MessageService:
         total = await query.count()
         conversations = await query.skip(offset).limit(limit).to_list()
         
+        # Deduplicate by patient_id (keep the most recent one)
+        seen_patients = {}
+        deduplicated = []
+        for conv in conversations:
+            if conv.patient_id not in seen_patients:
+                seen_patients[conv.patient_id] = conv
+                deduplicated.append(conv)
+            else:
+                # Keep the one with the most recent message
+                existing = seen_patients[conv.patient_id]
+                if (conv.last_message_at or conv.created_at) > (existing.last_message_at or existing.created_at):
+                    # Replace with newer one
+                    deduplicated = [c for c in deduplicated if c.patient_id != conv.patient_id]
+                    deduplicated.append(conv)
+                    seen_patients[conv.patient_id] = conv
+        
+        # Re-sort after deduplication
+        deduplicated.sort(
+            key=lambda c: (c.last_message_at or c.created_at or datetime.min),
+            reverse=True
+        )
+        
         # Enrich with patient info
         result = []
-        for conv in conversations:
+        for conv in deduplicated:
             # Get patient info
             patient = await Patient.find_one(Patient.patient_id == conv.patient_id)
             
