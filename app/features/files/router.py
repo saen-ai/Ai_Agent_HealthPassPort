@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends, UploadFile, File, status
 from app.features.files.service import FileService
 from app.features.auth.dependencies import get_current_user
+from app.features.patients.dependencies import get_current_patient
 from app.features.auth.models import User
+from app.features.patients.models import Patient
 from app.features.clinic.models import Clinic
 from app.shared.exceptions import BadRequestException, NotFoundException
 from app.core.logging import logger
@@ -104,4 +106,47 @@ async def upload_clinic_logo(
         }
     except Exception as e:
         logger.error(f"Error in upload_clinic_logo: {str(e)}")
+        raise
+
+
+@router.post("/upload-patient-avatar", status_code=status.HTTP_200_OK)
+async def upload_patient_avatar(
+    file: UploadFile = File(...),
+    current_patient: Patient = Depends(get_current_patient)
+):
+    """
+    Upload patient avatar to GCP Storage.
+    Automatically deletes the previous avatar if one exists.
+    
+    Requires patient authentication.
+    
+    - **file**: Image file (JPG or PNG, max 2MB)
+    
+    Returns:
+        dict: URL of uploaded avatar
+    """
+    if not file.filename:
+        raise BadRequestException("No file provided")
+    
+    try:
+        old_avatar_url = current_patient.avatar_url
+        
+        avatar_url = await FileService.upload_patient_avatar(
+            file=file,
+            patient_id=current_patient.patient_id,
+            old_avatar_url=old_avatar_url
+        )
+        
+        # Update patient's avatar_url
+        current_patient.avatar_url = avatar_url
+        await current_patient.save()
+        
+        logger.info(f"Patient avatar updated for patient {current_patient.patient_id}")
+        
+        return {
+            "url": avatar_url,
+            "message": "Avatar uploaded successfully"
+        }
+    except Exception as e:
+        logger.error(f"Error in upload_patient_avatar: {str(e)}")
         raise

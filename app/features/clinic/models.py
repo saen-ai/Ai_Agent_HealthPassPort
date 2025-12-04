@@ -16,6 +16,14 @@ class Clinic(Document, TimestampMixin):
     # Keep old field name for backward compatibility
     color_theme: Optional[str] = None
     
+    # Contact information
+    phone: Optional[str] = ""
+    email: Optional[str] = ""
+    
+    # Location for Google Maps
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    
     class Settings:
         name = "clinics"
         use_state_management = True
@@ -27,6 +35,10 @@ class Clinic(Document, TimestampMixin):
                 "owner_id": "user_123",
                 "address": "123 Medical Ave",
                 "logo_url": "",
-                "primary_color": "#0ea5e9"
+                "primary_color": "#0ea5e9",
+                "phone": "+1 (555) 123-4567",
+                "email": "contact@clinic.com",
+                "latitude": 40.7128,
+                "longitude": -74.0060
             }
         }

@@ -353,3 +353,116 @@ class FileService:
                 raise BadRequestException(
                     f"Failed to upload logo to GCP: {error_message}"
                 )
+    
+    @classmethod
+    async def upload_patient_avatar(
+        cls,
+        file: UploadFile,
+        patient_id: str,
+        old_avatar_url: Optional[str] = None
+    ) -> str:
+        """
+        Upload patient avatar to GCP Storage.
+        Deletes the old avatar if provided.
+        
+        Args:
+            file: Uploaded file
+            patient_id: Patient ID for organizing files
+            old_avatar_url: URL of existing avatar to delete
+        
+        Returns:
+            str: Signed URL of uploaded file
+        """
+        # Validate file type
+        allowed_types = ["image/jpeg", "image/jpg", "image/png"]
+        if file.content_type not in allowed_types:
+            raise BadRequestException(
+                "Invalid file type. Only JPG and PNG images are allowed."
+            )
+        
+        # Validate file size (2MB max for avatars)
+        file_content = await file.read()
+        file_size_mb = len(file_content) / (1024 * 1024)
+        if file_size_mb > 2:
+            raise BadRequestException(
+                "File size exceeds 2MB limit. Please upload a smaller image."
+            )
+        
+        # Validate and optimize image
+        try:
+            image = Image.open(io.BytesIO(file_content))
+            # Convert to RGB if necessary
+            if image.mode in ("RGBA", "P"):
+                rgb_image = Image.new("RGB", image.size, (255, 255, 255))
+                if image.mode == "RGBA":
+                    rgb_image.paste(image, mask=image.split()[3])
+                else:
+                    rgb_image.paste(image)
+                image = rgb_image
+            
+            # Resize if too large (max 512x512 for avatars)
+            max_size = 512
+            if image.width > max_size or image.height > max_size:
+                image.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+            
+            # Convert to bytes
+            output = io.BytesIO()
+            image_format = "JPEG"
+            image.save(output, format=image_format, quality=90, optimize=True)
+            file_content = output.getvalue()
+            
+        except Exception as e:
+            logger.error(f"Error processing avatar image: {str(e)}")
+            raise BadRequestException("Invalid image file. Please upload a valid image.")
+        
+        # Generate unique filename
+        file_extension = "jpg"
+        unique_filename = f"patient-avatars/{patient_id}/{uuid.uuid4()}.{file_extension}"
+        
+        # Upload to GCP
+        try:
+            client = cls.get_client()
+            bucket = client.bucket(settings.GCP_STORAGE_BUCKET_NAME)
+            
+            blob = bucket.blob(unique_filename)
+            blob.content_type = "image/jpeg"
+            blob.cache_control = "public, max-age=31536000"
+            
+            blob.upload_from_string(file_content, content_type="image/jpeg")
+            
+            # Generate signed URL
+            signed_url = blob.generate_signed_url(
+                version="v4",
+                expiration=timedelta(days=7),
+                method="GET"
+            )
+            
+            logger.info(f"Successfully uploaded patient avatar: {unique_filename}")
+            
+            # Delete old avatar if provided
+            if old_avatar_url:
+                deleted = await cls.delete_file(old_avatar_url)
+                if deleted:
+                    logger.info(f"Deleted old patient avatar")
+                else:
+                    logger.warning(f"Could not delete old patient avatar")
+            
+            return signed_url
+            
+        except BadRequestException:
+            raise
+        except Exception as e:
+            logger.error(f"Error uploading patient avatar to GCP: {str(e)}")
+            error_message = str(e)
+            if "403" in error_message or "permission" in error_message.lower():
+                raise BadRequestException(
+                    "Permission denied. Please check GCP bucket permissions."
+                )
+            elif "404" in error_message or "not found" in error_message.lower():
+                raise BadRequestException(
+                    f"Bucket '{settings.GCP_STORAGE_BUCKET_NAME}' not found."
+                )
+            else:
+                raise BadRequestException(
+                    f"Failed to upload avatar to GCP: {error_message}"
+                )

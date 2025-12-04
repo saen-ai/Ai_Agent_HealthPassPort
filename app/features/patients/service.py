@@ -339,6 +339,10 @@ class PatientService:
             logo_url=clinic.logo_url,
             primary_color=primary_color,
             address=clinic.address,
+            phone=getattr(clinic, 'phone', None) or "",
+            email=getattr(clinic, 'email', None) or "",
+            latitude=getattr(clinic, 'latitude', None),
+            longitude=getattr(clinic, 'longitude', None),
         )
     
     @staticmethod

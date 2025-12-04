@@ -92,6 +92,8 @@ class ClinicInfo(BaseModel):
     address: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 
 class PatientLoginResponse(BaseModel):
@@ -136,6 +138,14 @@ class PatientResetPasswordRequest(BaseModel):
 class NotificationSettingsRequest(BaseModel):
     """Notification settings request schema."""
     notifications_enabled: bool = Field(..., description="Enable or disable browser notifications")
+
+
+# ============== Change Password ==============
+
+class ChangePasswordRequest(BaseModel):
+    """Request schema for changing patient password."""
+    current_password: str = Field(..., min_length=1, description="Current password")
+    new_password: str = Field(..., min_length=6, description="New password (min 6 characters)")
 
 
 # ============== Message Response ==============

@@ -16,6 +16,7 @@ from app.features.patients.schemas import (
     PatientForgotPasswordRequest,
     PatientResetPasswordRequest,
     NotificationSettingsRequest,
+    ChangePasswordRequest,
     MessageResponse,
 )
 from app.features.patients.service import PatientService
@@ -237,3 +238,32 @@ async def update_patient_notification_settings(
     await current_patient.save()
     
     return PatientService.patient_to_response(current_patient)
+
+
+@router.post("/auth/change-password", response_model=MessageResponse)
+async def change_patient_password(
+    request: ChangePasswordRequest,
+    current_patient: Patient = Depends(get_current_patient)
+):
+    """
+    Change the current patient's password.
+    
+    Requires patient authentication.
+    
+    - **current_password**: Current password for verification
+    - **new_password**: New password (min 6 characters)
+    """
+    from app.core.security import verify_password, get_password_hash
+    
+    # Verify current password
+    if not verify_password(request.current_password, current_patient.password_hash):
+        from app.shared.exceptions import BadRequestException
+        raise BadRequestException("Current password is incorrect")
+    
+    # Hash and save new password
+    current_patient.password_hash = get_password_hash(request.new_password)
+    await current_patient.save()
+    
+    logger.info(f"Password changed for patient {current_patient.patient_id}")
+    
+    return MessageResponse(message="Password changed successfully")

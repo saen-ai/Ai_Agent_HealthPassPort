@@ -67,6 +67,10 @@ async def get_my_clinic(current_user: User = Depends(get_current_user)):
         address=clinic.address or "",
         logo_url=clinic.logo_url or "",
         primary_color=clinic.primary_color or primary_color,
+        phone=clinic.phone or "",
+        email=clinic.email or "",
+        latitude=clinic.latitude,
+        longitude=clinic.longitude,
         created_at=clinic.created_at,
         updated_at=clinic.updated_at,
     )
@@ -86,6 +90,10 @@ async def update_my_clinic(
     - **address**: Clinic address (optional)
     - **logo_url**: URL to clinic logo (optional)
     - **primary_color**: Primary brand color as hex (optional, e.g. #0ea5e9)
+    - **phone**: Clinic phone number (optional)
+    - **email**: Clinic email address (optional)
+    - **latitude**: Clinic latitude for Google Maps (optional)
+    - **longitude**: Clinic longitude for Google Maps (optional)
     """
     # Find clinic
     clinic = None
@@ -134,6 +142,10 @@ async def update_my_clinic(
         address=clinic.address or "",
         logo_url=clinic.logo_url or "",
         primary_color=clinic.primary_color if hasattr(clinic, 'primary_color') and clinic.primary_color else primary_color,
+        phone=clinic.phone or "",
+        email=clinic.email or "",
+        latitude=clinic.latitude,
+        longitude=clinic.longitude,
         created_at=clinic.created_at,
         updated_at=clinic.updated_at,
     )
