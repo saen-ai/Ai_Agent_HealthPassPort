@@ -40,6 +40,35 @@ async def create_note(
     )
 
 
+# ==================== Patient Endpoints ====================
+# NOTE: This endpoint MUST be defined BEFORE /patient/{patient_id} to avoid route conflict
+# FastAPI matches routes in order of definition, so static routes must come before dynamic ones
+
+@router.get("/patient/my-notes", response_model=NoteListResponse)
+async def get_my_notes(
+    limit: int = Query(50, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    current_patient: Patient = Depends(get_current_patient)
+):
+    """
+    Get shared notes for the current patient.
+    Only returns notes that have been marked as shared by the doctor.
+    """
+    notes, total = await NoteService.get_shared_notes_for_patient(
+        patient_id=current_patient.patient_id,
+        limit=limit,
+        offset=offset
+    )
+    
+    return NoteListResponse(
+        notes=notes,
+        total=total,
+        has_more=offset + len(notes) < total
+    )
+
+
+# ==================== More Doctor Endpoints ====================
+
 @router.get("/patient/{patient_id}", response_model=NoteListResponse)
 async def get_patient_notes(
     patient_id: str,
@@ -104,28 +133,3 @@ async def delete_note(
         user_id=str(current_user.id)
     )
     return {"message": "Note deleted successfully"}
-
-
-# ==================== Patient Endpoints ====================
-
-@router.get("/patient/my-notes", response_model=NoteListResponse)
-async def get_my_notes(
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-    current_patient: Patient = Depends(get_current_patient)
-):
-    """
-    Get shared notes for the current patient.
-    Only returns notes that have been marked as shared by the doctor.
-    """
-    notes, total = await NoteService.get_shared_notes_for_patient(
-        patient_id=current_patient.patient_id,
-        limit=limit,
-        offset=offset
-    )
-    
-    return NoteListResponse(
-        notes=notes,
-        total=total,
-        has_more=offset + len(notes) < total
-    )

@@ -165,12 +165,101 @@ class PatientService:
     
     @staticmethod
     async def delete_patient(patient_id: str, clinic_id: str) -> None:
-        """Permanently delete a patient from the database."""
+        """
+        Permanently delete a patient and ALL related data from the database.
+        
+        This includes:
+        - Patient record
+        - All conversations with this patient
+        - All messages in those conversations
+        - All notes for this patient
+        - All push notification subscriptions
+        - All password reset tokens
+        """
+        from app.features.messages.models import Conversation, Message, PushSubscription
+        from app.features.notes.models import Note
+        
+        # Get patient first to verify it exists
         patient = await PatientService.get_patient_by_id(patient_id, clinic_id)
         
+        logger.info(f"Starting cascade deletion for patient {patient_id}")
+        
+        # 1. Delete all conversations for this patient (and their messages)
+        conversations = await Conversation.find(
+            Conversation.patient_id == patient_id,
+            Conversation.clinic_id == clinic_id
+        ).to_list()
+        
+        conversation_ids = [str(conv.id) for conv in conversations]
+        deleted_conversations_count = len(conversation_ids)
+        
+        deleted_messages_count = 0
+        if conversation_ids:
+            # Delete all messages in these conversations
+            # Beanie doesn't support .in_(), so we need to query each conversation_id
+            for conv_id in conversation_ids:
+                messages = await Message.find(
+                    Message.conversation_id == conv_id
+                ).to_list()
+                
+                for message in messages:
+                    await message.delete()
+                    deleted_messages_count += 1
+            
+            logger.info(f"Deleted {deleted_messages_count} messages for patient {patient_id}")
+            
+            # Delete conversations
+            for conversation in conversations:
+                await conversation.delete()
+            
+            logger.info(f"Deleted {deleted_conversations_count} conversations for patient {patient_id}")
+        
+        # 2. Delete all notes for this patient
+        notes = await Note.find(
+            Note.patient_id == patient_id,
+            Note.clinic_id == clinic_id
+        ).to_list()
+        
+        deleted_notes_count = len(notes)
+        for note in notes:
+            await note.delete()
+        
+        if deleted_notes_count > 0:
+            logger.info(f"Deleted {deleted_notes_count} notes for patient {patient_id}")
+        
+        # 3. Delete all push notification subscriptions for this patient
+        push_subscriptions = await PushSubscription.find(
+            PushSubscription.patient_id == patient_id
+        ).to_list()
+        
+        deleted_subscriptions_count = len(push_subscriptions)
+        for subscription in push_subscriptions:
+            await subscription.delete()
+        
+        if deleted_subscriptions_count > 0:
+            logger.info(f"Deleted {deleted_subscriptions_count} push subscriptions for patient {patient_id}")
+        
+        # 4. Delete all password reset tokens for this patient
+        password_resets = await PatientPasswordReset.find(
+            PatientPasswordReset.patient_id == patient_id
+        ).to_list()
+        
+        deleted_resets_count = len(password_resets)
+        for reset in password_resets:
+            await reset.delete()
+        
+        if deleted_resets_count > 0:
+            logger.info(f"Deleted {deleted_resets_count} password reset tokens for patient {patient_id}")
+        
+        # 5. Finally, delete the patient record itself
         await patient.delete()
         
-        logger.info(f"Permanently deleted patient {patient_id}")
+        logger.info(
+            f"✅ Permanently deleted patient {patient_id} and all related data: "
+            f"{deleted_conversations_count} conversations, {deleted_messages_count} messages, "
+            f"{deleted_notes_count} notes, {deleted_subscriptions_count} push subscriptions, "
+            f"{deleted_resets_count} password reset tokens"
+        )
     
     @staticmethod
     async def patient_login(request: PatientLoginRequest) -> tuple[Patient, str, Clinic]:
