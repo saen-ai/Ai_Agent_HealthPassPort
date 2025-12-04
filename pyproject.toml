@@ -19,6 +19,7 @@ dependencies = [
     "google-cloud-storage>=2.18.0",
     "pillow>=10.4.0",
     "python-socketio>=5.11.0",
+    "pywebpush>=2.1.2",
 ]
 
 [project.optional-dependencies]

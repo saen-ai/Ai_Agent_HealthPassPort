@@ -98,3 +98,23 @@ class MessageStatusResponse(BaseModel):
     """Generic status response."""
     message: str
     success: bool = True
+
+
+# ============== Push Subscription Schemas ==============
+
+class PushSubscriptionKeys(BaseModel):
+    """Push subscription keys."""
+    p256dh: str
+    auth: str
+
+
+class PushSubscriptionRequest(BaseModel):
+    """Request schema for push subscription."""
+    endpoint: str
+    keys: PushSubscriptionKeys
+
+
+class PushSubscriptionResponse(BaseModel):
+    """Response schema for push subscription."""
+    message: str
+    success: bool = True

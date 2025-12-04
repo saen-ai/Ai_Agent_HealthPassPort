@@ -362,6 +362,35 @@ class MessageService:
                 room=f"conversation_{conversation_id}"
             )
         
+        # Send push notification to recipient (in background, don't wait)
+        try:
+            from app.core.push_notifications import PushNotificationService
+            
+            # Determine recipient
+            if sender_type == "doctor":
+                # Send to patient
+                recipient_type = "patient"
+                recipient_id = conversation.patient_id
+            else:
+                # Send to doctor - use user_id from conversation
+                recipient_type = "doctor"
+                recipient_id = conversation.user_id
+            
+            if recipient_id:
+                # Send push notification asynchronously (don't block)
+                import asyncio
+                asyncio.create_task(
+                    PushNotificationService.send_message_notification(
+                        recipient_type=recipient_type,
+                        recipient_id=recipient_id,
+                        sender_name=sender_name,
+                        message_content=content,
+                        conversation_id=conversation_id
+                    )
+                )
+        except Exception as e:
+            logger.error(f"Failed to send push notification: {e}")
+        
         return response
     
     @staticmethod

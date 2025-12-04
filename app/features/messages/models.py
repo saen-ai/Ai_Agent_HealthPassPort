@@ -62,6 +62,37 @@ class Conversation(Document, TimestampMixin):
         }
 
 
+class PushSubscription(Document, TimestampMixin):
+    """
+    Push notification subscription document model.
+    Stores Web Push API subscriptions for users and patients.
+    """
+    
+    # User or patient identifier
+    user_id: Optional[str] = None  # For doctors (user_id)
+    patient_id: Optional[str] = None  # For patients
+    
+    # Subscription type
+    subscription_type: Literal["doctor", "patient"]
+    
+    # Push subscription data
+    endpoint: str
+    p256dh: str  # Public key
+    auth: str  # Auth secret
+    
+    # Status
+    is_active: bool = True
+    
+    class Settings:
+        name = "push_subscriptions"
+        use_state_management = True
+        indexes = [
+            [("user_id", 1)],
+            [("patient_id", 1)],
+            [("endpoint", 1)],
+        ]
+
+
 class Message(Document, TimestampMixin):
     """
     Message document model.

@@ -11,7 +11,10 @@ from app.features.messages.schemas import (
     ConversationResponse,
     ConversationListResponse,
     MessageStatusResponse,
+    PushSubscriptionRequest,
+    PushSubscriptionResponse,
 )
+from app.features.messages.models import PushSubscription
 from app.features.messages.service import MessageService
 from app.features.auth.dependencies import get_current_user
 from app.features.patients.dependencies import get_current_patient
@@ -310,3 +313,121 @@ async def get_patient_unread_count(
     count = await MessageService.get_unread_count_for_patient(current_patient.patient_id)
     
     return {"unread_count": count}
+
+
+@router.post("/patient/push-subscription", response_model=PushSubscriptionResponse)
+async def save_patient_push_subscription(
+    request: PushSubscriptionRequest,
+    current_patient: Patient = Depends(get_current_patient)
+):
+    """
+    Save push notification subscription for patient.
+    
+    Requires patient authentication.
+    """
+    # Delete existing subscription for this patient
+    existing = await PushSubscription.find(
+        {"patient_id": current_patient.patient_id, "is_active": True}
+    ).to_list()
+    for sub in existing:
+        await sub.delete()
+    
+    # Create new subscription
+    subscription = PushSubscription(
+        patient_id=current_patient.patient_id,
+        subscription_type="patient",
+        endpoint=request.endpoint,
+        p256dh=request.keys.p256dh,
+        auth=request.keys.auth,
+        is_active=True,
+    )
+    await subscription.insert()
+    
+    logger.info(f"Saved push subscription for patient {current_patient.patient_id}")
+    
+    return PushSubscriptionResponse(
+        message="Push subscription saved successfully",
+        success=True
+    )
+
+
+@router.delete("/patient/push-subscription", response_model=PushSubscriptionResponse)
+async def delete_patient_push_subscription(
+    current_patient: Patient = Depends(get_current_patient)
+):
+    """
+    Delete push notification subscription for patient.
+    
+    Requires patient authentication.
+    """
+    existing = await PushSubscription.find(
+        {"patient_id": current_patient.patient_id}
+    ).to_list()
+    for sub in existing:
+        await sub.delete()
+    
+    logger.info(f"Deleted push subscription for patient {current_patient.patient_id}")
+    
+    return PushSubscriptionResponse(
+        message="Push subscription deleted successfully",
+        success=True
+    )
+
+
+@router.post("/push-subscription", response_model=PushSubscriptionResponse)
+async def save_doctor_push_subscription(
+    request: PushSubscriptionRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Save push notification subscription for doctor.
+    
+    Requires doctor/admin authentication.
+    """
+    # Delete existing subscription for this user
+    existing = await PushSubscription.find(
+        {"user_id": str(current_user.id), "is_active": True}
+    ).to_list()
+    for sub in existing:
+        await sub.delete()
+    
+    # Create new subscription
+    subscription = PushSubscription(
+        user_id=str(current_user.id),
+        subscription_type="doctor",
+        endpoint=request.endpoint,
+        p256dh=request.keys.p256dh,
+        auth=request.keys.auth,
+        is_active=True,
+    )
+    await subscription.insert()
+    
+    logger.info(f"Saved push subscription for user {current_user.id}")
+    
+    return PushSubscriptionResponse(
+        message="Push subscription saved successfully",
+        success=True
+    )
+
+
+@router.delete("/push-subscription", response_model=PushSubscriptionResponse)
+async def delete_doctor_push_subscription(
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Delete push notification subscription for doctor.
+    
+    Requires doctor/admin authentication.
+    """
+    existing = await PushSubscription.find(
+        {"user_id": str(current_user.id)}
+    ).to_list()
+    for sub in existing:
+        await sub.delete()
+    
+    logger.info(f"Deleted push subscription for user {current_user.id}")
+    
+    return PushSubscriptionResponse(
+        message="Push subscription deleted successfully",
+        success=True
+    )

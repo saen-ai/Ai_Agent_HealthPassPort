@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List
+from typing import List, Optional
 import json
 
 
@@ -38,6 +38,10 @@ class Settings(BaseSettings):
     GCP_STORAGE_BUCKET_NAME: str = ""
     GCP_PROJECT_ID: str = ""
     GOOGLE_APPLICATION_CREDENTIALS: str = ""  # Path to service account JSON key file
+    
+    # Push Notifications - VAPID Keys
+    VAPID_PUBLIC_KEY: Optional[str] = None
+    VAPID_PRIVATE_KEY: Optional[str] = None
     
     model_config = SettingsConfigDict(
         env_file=".env",
