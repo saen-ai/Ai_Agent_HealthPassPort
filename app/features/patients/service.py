@@ -125,7 +125,10 @@ class PatientService:
     @staticmethod
     async def get_patient_by_mongo_id(mongo_id: str) -> Patient:
         """Get a patient by their MongoDB _id."""
-        patient = await Patient.get(mongo_id)
+        try:
+            patient = await Patient.get(ObjectId(mongo_id))
+        except Exception:
+            raise NotFoundException("Patient not found")
         
         if not patient:
             raise NotFoundException("Patient not found")

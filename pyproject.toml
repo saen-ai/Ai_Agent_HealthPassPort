@@ -18,6 +18,7 @@ dependencies = [
     "aiosmtplib>=3.0.2",
     "google-cloud-storage>=2.18.0",
     "pillow>=10.4.0",
+    "python-socketio>=5.11.0",
 ]
 
 [project.optional-dependencies]
