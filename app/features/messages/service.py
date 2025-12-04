@@ -228,29 +228,28 @@ class MessageService:
         Returns:
             Tuple of (messages list, total count, has_more)
         """
-        query_filter = {
-            "conversation_id": conversation_id,
-            "is_deleted": False
-        }
-        
-        if before:
-            query_filter["created_at"] = {"$lt": before}
-        
-        # Get total count
-        total = await Message.find(
+        # Build query using Beanie syntax
+        query = Message.find(
             Message.conversation_id == conversation_id,
             Message.is_deleted == False
-        ).count()
+        )
+        
+        # Add before filter if provided
+        if before:
+            query = query.find(Message.created_at < before)
+        
+        # Get total count
+        total = await query.count()
         
         # Get messages sorted by newest first for pagination, then reverse for display
-        messages = await Message.find(query_filter).sort(
+        messages = await query.sort(
             [("created_at", -1)]
         ).limit(limit + 1).to_list()
         
         has_more = len(messages) > limit
         messages = messages[:limit]
         
-        # Reverse to get chronological order
+        # Reverse to get chronological order (oldest first)
         messages.reverse()
         
         result = [
@@ -269,6 +268,8 @@ class MessageService:
             )
             for msg in messages
         ]
+        
+        logger.info(f"Fetched {len(result)} messages for conversation {conversation_id} (total: {total})")
         
         return result, total, has_more
     
@@ -317,6 +318,8 @@ class MessageService:
             attachment_type=attachment_type,
         )
         await message.insert()
+        
+        logger.info(f"Message saved to MongoDB: id={message.id}, conversation_id={conversation_id}, content={content[:50]}...")
         
         # Update conversation
         conversation.last_message = content[:100] if len(content) > 100 else content
