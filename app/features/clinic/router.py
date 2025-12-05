@@ -1,7 +1,8 @@
 # Clinic router
 from fastapi import APIRouter, Depends, status
+from bson import ObjectId
 from app.features.clinic.models import Clinic
-from app.features.clinic.schemas import ClinicResponse, UpdateClinicRequest
+from app.features.clinic.schemas import ClinicResponse, UpdateClinicRequest, ClinicBrandingResponse
 from app.features.auth.dependencies import get_current_user
 from app.features.auth.models import User
 from app.shared.exceptions import NotFoundException
@@ -148,4 +149,34 @@ async def update_my_clinic(
         longitude=clinic.longitude,
         created_at=clinic.created_at,
         updated_at=clinic.updated_at,
+    )
+
+
+@router.get("/{clinic_id}/branding", response_model=ClinicBrandingResponse)
+async def get_clinic_branding(clinic_id: str):
+    """
+    Get clinic branding information (public endpoint, no authentication required).
+    
+    This endpoint allows patients to fetch the latest clinic branding (logo and color)
+    even when their authentication token has expired.
+    
+    - **clinic_id**: MongoDB ObjectId of the clinic
+    """
+    try:
+        clinic = await Clinic.get(ObjectId(clinic_id))
+    except Exception:
+        raise NotFoundException("Clinic not found")
+    
+    # Handle backward compatibility: use color_theme if primary_color doesn't exist
+    primary_color = getattr(clinic, 'primary_color', None) or getattr(clinic, 'color_theme', None) or "#0ea5e9"
+    
+    # Ensure color is properly formatted (with #)
+    if primary_color and not primary_color.startswith('#'):
+        primary_color = '#' + primary_color
+    
+    return ClinicBrandingResponse(
+        id=str(clinic.id),
+        name=clinic.name,
+        logo_url=clinic.logo_url or "",
+        primary_color=primary_color,
     )

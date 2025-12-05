@@ -30,3 +30,21 @@ class UpdateClinicRequest(BaseModel):
     email: Optional[str] = Field(None, max_length=100)
     latitude: Optional[float] = Field(None, ge=-90, le=90)
     longitude: Optional[float] = Field(None, ge=-180, le=180)
+
+
+class ClinicBrandingResponse(BaseModel):
+    """Public clinic branding information (no authentication required)."""
+    id: str
+    name: str
+    logo_url: Optional[str] = ""
+    primary_color: str = "#0ea5e9"
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "id": "clinic_123",
+                "name": "Advanced Health Clinic",
+                "logo_url": "https://example.com/logo.png",
+                "primary_color": "#000000"
+            }
+        }
