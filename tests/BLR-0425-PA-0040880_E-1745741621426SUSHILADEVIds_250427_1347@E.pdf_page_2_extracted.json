@@ -1,0 +1,309 @@
+{
+  "source_image": "BLR-0425-PA-0040880_E-1745741621426SUSHILADEVIds_250427_1347@E.pdf_page_2.png",
+  "lab_name": null,
+  "report_date": null,
+  "report_type": "OTHER",
+  "biomarkers": [
+    {
+      "original_name": "Platelet Count",
+      "standardized_name": "platelets",
+      "category": "CBC",
+      "value": 197000,
+      "unit": "/ cu.mm",
+      "reference_min": 150000,
+      "reference_max": 400000,
+      "flag": "CRITICAL_HIGH",
+      "is_abnormal": true
+    },
+    {
+      "original_name": "Neutrophils",
+      "standardized_name": "neutrophils",
+      "category": "CBC",
+      "value": 68.8,
+      "unit": "%",
+      "reference_min": 40.0,
+      "reference_max": 75.0,
+      "flag": null,
+      "is_abnormal": false
+    },
+    {
+      "original_name": "Lymphocytes",
+      "standardized_name": "lymphocytes",
+      "category": "CBC",
+      "value": 16.0,
+      "unit": "%",
+      "reference_min": 20.0,
+      "reference_max": 45.0,
+      "flag": "LOW",
+      "is_abnormal": true
+    },
+    {
+      "original_name": "Eosinophils",
+      "standardized_name": "eosinophils",
+      "category": "CBC",
+      "value": 8.1,
+      "unit": "%",
+      "reference_min": 0.0,
+      "reference_max": 7.0,
+      "flag": "CRITICAL_HIGH",
+      "is_abnormal": true
+    },
+    {
+      "original_name": "Basophils",
+      "standardized_name": "basophils",
+      "category": "CBC",
+      "value": 0.4,
+      "unit": "%",
+      "reference_min": 0.0,
+      "reference_max": 1.0,
+      "flag": null,
+      "is_abnormal": false
+    },
+    {
+      "original_name": "Monocytes",
+      "standardized_name": "monocytes",
+      "category": "CBC",
+      "value": 6.7,
+      "unit": "%",
+      "reference_min": 2.0,
+      "reference_max": 10.0,
+      "flag": null,
+      "is_abnormal": false
+    },
+    {
+      "original_name": "RDW",
+      "standardized_name": "rdw",
+      "category": "CBC",
+      "value": 13.9,
+      "unit": "%",
+      "reference_min": 11.6,
+      "reference_max": 14.0,
+      "flag": null,
+      "is_abnormal": false
+    },
+    {
+      "original_name": "IPF",
+      "standardized_name": "ipf",
+      "category": "OTHER",
+      "value": 20.1,
+      "unit": "%",
+      "reference_min": 0.7,
+      "reference_max": 9.1,
+      "flag": "HIGH",
+      "is_abnormal": true
+    },
+    {
+      "original_name": "Neutrophil Absolute",
+      "standardized_name": "neutrophil_absolute",
+      "category": "OTHER",
+      "value": 6288.3,
+      "unit": "/cu mm",
+      "reference_min": 2000.0,
+      "reference_max": 7000.0,
+      "flag": null,
+      "is_abnormal": false
+    },
+    {
+      "original_name": "Lymphocyte Absolute",
+      "standardized_name": "lymphocyte_absolute",
+      "category": "OTHER",
+      "value": 1462.4,
+      "unit": "/cu mm",
+      "reference_min": 1000.0,
+      "reference_max": 3000.0,
+      "flag": null,
+      "is_abnormal": false
+    },
+    {
+      "original_name": "Monocyte Absolute",
+      "standardized_name": "monocyte_absolute",
+      "category": "OTHER",
+      "value": 612.4,
+      "unit": "/cu mm",
+      "reference_min": 200.0,
+      "reference_max": 1000.0,
+      "flag": null,
+      "is_abnormal": false
+    },
+    {
+      "original_name": "Eosinophil Absolute",
+      "standardized_name": "eosinophil_absolute",
+      "category": "OTHER",
+      "value": 740.3,
+      "unit": "/cu mm",
+      "reference_min": 40.0,
+      "reference_max": 440.0,
+      "flag": "HIGH",
+      "is_abnormal": true
+    },
+    {
+      "original_name": "Basophil Absolute",
+      "standardized_name": "basophil_absolute",
+      "category": "OTHER",
+      "value": 36.6,
+      "unit": "/cu mm",
+      "reference_min": 20.0,
+      "reference_max": 100.0,
+      "flag": null,
+      "is_abnormal": false
+    },
+    {
+      "original_name": "SERUM BICARBONATE(Enzymatic)",
+      "standardized_name": "serum_bicarbonate(enzymatic)",
+      "category": "OTHER",
+      "value": 23.0,
+      "unit": "mmol/L",
+      "reference_min": 22.0,
+      "reference_max": 29.0,
+      "flag": null,
+      "is_abnormal": false
+    },
+    {
+      "original_name": "SERUM SODIUM (Indirect ISE)",
+      "standardized_name": "serum_sodium_(indirect_ise)",
+      "category": "OTHER",
+      "value": 143.0,
+      "unit": "mmol/l",
+      "reference_min": 135.0,
+      "reference_max": 145.0,
+      "flag": null,
+      "is_abnormal": false
+    },
+    {
+      "original_name": "SERUM POTASSIUM (Indirect ISE)",
+      "standardized_name": "serum_potassium_(indirect_ise)",
+      "category": "OTHER",
+      "value": 3.48,
+      "unit": "mmol/l",
+      "reference_min": 3.5,
+      "reference_max": 5.1,
+      "flag": "LOW",
+      "is_abnormal": true
+    },
+    {
+      "original_name": "SERUM CHLORIDE (ISE / IMT)",
+      "standardized_name": "serum_chloride_(ise_/_imt)",
+      "category": "OTHER",
+      "value": 103.2,
+      "unit": "mmol/L",
+      "reference_min": 98.0,
+      "reference_max": 107.0,
+      "flag": null,
+      "is_abnormal": false
+    },
+    {
+      "original_name": "Blood Urea Nitrogen (Urease/GLDH)",
+      "standardized_name": "blood_urea_nitrogen_(urease/gldh)",
+      "category": "OTHER",
+      "value": 9.1,
+      "unit": "mg/dl",
+      "reference_min": 6.0,
+      "reference_max": 20.0,
+      "flag": null,
+      "is_abnormal": false
+    },
+    {
+      "original_name": "SERUM CREATININE (mod.Jaffe)",
+      "standardized_name": "serum_creatinine_(mod.jaffe)",
+      "category": "OTHER",
+      "value": 0.72,
+      "unit": "mg/dl",
+      "reference_min": 0.6,
+      "reference_max": 1.4,
+      "flag": null,
+      "is_abnormal": false
+    },
+    {
+      "original_name": "GLUCOSE- Random (Hexokinase)",
+      "standardized_name": "glucose__random_(hexokinase)",
+      "category": "OTHER",
+      "value": 131,
+      "unit": "mg/dl",
+      "reference_min": 70.0,
+      "reference_max": 140.0,
+      "flag": null,
+      "is_abnormal": false
+    },
+    {
+      "original_name": "eGFR",
+      "standardized_name": "egfr",
+      "category": "OTHER",
+      "value": 92.0,
+      "unit": "ml/min/1.73sq.m",
+      "reference_min": 60.0,
+      "reference_max": null,
+      "flag": null,
+      "is_abnormal": false
+    },
+    {
+      "original_name": "INR",
+      "standardized_name": "inr",
+      "category": "OTHER",
+      "value": 0.94,
+      "unit": "",
+      "reference_min": null,
+      "reference_max": null,
+      "flag": null,
+      "is_abnormal": false
+    },
+    {
+      "original_name": "Prothrombin Time Test",
+      "standardized_name": "prothrombin_time_test",
+      "category": "OTHER",
+      "value": 12.2,
+      "unit": "sec",
+      "reference_min": 11.4,
+      "reference_max": 15.2,
+      "flag": null,
+      "is_abnormal": false
+    },
+    {
+      "original_name": "PT CONTROL",
+      "standardized_name": "pt_control",
+      "category": "OTHER",
+      "value": 13.0,
+      "unit": "sec",
+      "reference_min": null,
+      "reference_max": null,
+      "flag": null,
+      "is_abnormal": false
+    },
+    {
+      "original_name": "ISI Value",
+      "standardized_name": "isi_value",
+      "category": "OTHER",
+      "value": 1.08,
+      "unit": "sec",
+      "reference_min": null,
+      "reference_max": null,
+      "flag": null,
+      "is_abnormal": false
+    },
+    {
+      "original_name": "HBsAG (Rapid Test)",
+      "standardized_name": "hbsag_(rapid_test)",
+      "category": "OTHER",
+      "value": null,
+      "unit": "",
+      "reference_min": null,
+      "reference_max": null,
+      "flag": null,
+      "is_abnormal": false
+    },
+    {
+      "original_name": "HIV I & II Antibody (Rapid Test)",
+      "standardized_name": "hiv_i_&_ii_antibody_(rapid_test)",
+      "category": "OTHER",
+      "value": null,
+      "unit": "",
+      "reference_min": null,
+      "reference_max": null,
+      "flag": null,
+      "is_abnormal": false
+    }
+  ],
+  "summary": {
+    "total": 27,
+    "abnormal": 6
+  }
+}

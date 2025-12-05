@@ -1,0 +1,122 @@
+{
+  "source_image": "BLR-0425-PA-0040326_Lab Report Sunita_27-04-2025_0131-15_PM@G.pdf_page_11.png",
+  "lab_name": "PARIDHI PATHOLOGY",
+  "report_date": null,
+  "report_type": "LIVER",
+  "biomarkers": [
+    {
+      "original_name": "TOTAL BILIRUBIN",
+      "standardized_name": "bilirubin_total",
+      "category": "LIVER",
+      "value": 1.8,
+      "unit": "mg/dl",
+      "reference_min": 0.4,
+      "reference_max": 1.0,
+      "flag": "CRITICAL_HIGH",
+      "is_abnormal": true
+    },
+    {
+      "original_name": "DIRECT BILIRUBIN",
+      "standardized_name": "direct_bilirubin",
+      "category": "OTHER",
+      "value": 1.0,
+      "unit": "mg/dl",
+      "reference_min": 0.1,
+      "reference_max": 0.5,
+      "flag": "HIGH",
+      "is_abnormal": true
+    },
+    {
+      "original_name": "INDIRECT BILIRUBIN",
+      "standardized_name": "indirect_bilirubin",
+      "category": "OTHER",
+      "value": 0.8,
+      "unit": "mg/dl",
+      "reference_min": 0.2,
+      "reference_max": 0.8,
+      "flag": null,
+      "is_abnormal": false
+    },
+    {
+      "original_name": "SERUM SGOT(AST)",
+      "standardized_name": "serum_sgot(ast)",
+      "category": "OTHER",
+      "value": 74.0,
+      "unit": "IU/L",
+      "reference_min": 5,
+      "reference_max": 40,
+      "flag": "HIGH",
+      "is_abnormal": true
+    },
+    {
+      "original_name": "SERUM SGPT(ALT)",
+      "standardized_name": "serum_sgpt(alt)",
+      "category": "OTHER",
+      "value": 89.0,
+      "unit": "IU/L",
+      "reference_min": 5,
+      "reference_max": 55,
+      "flag": "HIGH",
+      "is_abnormal": true
+    },
+    {
+      "original_name": "SERUM TOTAL PROTEIN",
+      "standardized_name": "serum_total_protein",
+      "category": "OTHER",
+      "value": 5.5,
+      "unit": "gm/dl",
+      "reference_min": 6.0,
+      "reference_max": 8.0,
+      "flag": "LOW",
+      "is_abnormal": true
+    },
+    {
+      "original_name": "SERUM ALBUMIN",
+      "standardized_name": "albumin",
+      "category": "LIVER",
+      "value": 3.11,
+      "unit": "gm/dl",
+      "reference_min": 3.5,
+      "reference_max": 5.5,
+      "flag": "LOW",
+      "is_abnormal": true
+    },
+    {
+      "original_name": "SERUM GLOBULIN",
+      "standardized_name": "serum_globulin",
+      "category": "OTHER",
+      "value": 2.39,
+      "unit": "gm/dl",
+      "reference_min": 2.0,
+      "reference_max": 4.0,
+      "flag": null,
+      "is_abnormal": false
+    },
+    {
+      "original_name": "A/G RATIO",
+      "standardized_name": "a/g_ratio",
+      "category": "OTHER",
+      "value": 1.3,
+      "unit": "RATIO",
+      "reference_min": 1.0,
+      "reference_max": 1.85,
+      "flag": null,
+      "is_abnormal": false
+    },
+    {
+      "original_name": "ALKALINE PHOSPHATASE",
+      "standardized_name": "alp",
+      "category": "LIVER",
+      "value": 169,
+      "unit": "IU/L",
+      "reference_min": null,
+      "reference_max": 280,
+      "flag": "HIGH",
+      "is_abnormal": true
+    }
+  ],
+  "summary": {
+    "total": 10,
+    "abnormal": 7
+  }
+}

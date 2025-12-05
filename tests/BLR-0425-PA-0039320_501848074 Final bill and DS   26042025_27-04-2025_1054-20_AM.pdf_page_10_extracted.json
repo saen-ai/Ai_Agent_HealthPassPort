@@ -1,0 +1,166 @@
+{
+  "source_image": "BLR-0425-PA-0039320_501848074 Final bill and DS   26042025_27-04-2025_1054-20_AM.pdf_page_10.png",
+  "lab_name": "Aster MIMS Hospital",
+  "report_date": null,
+  "report_type": "CBC",
+  "biomarkers": [
+    {
+      "original_name": "APTT",
+      "standardized_name": "aptt",
+      "category": "OTHER",
+      "value": 66.9,
+      "unit": "sec",
+      "reference_min": 26,
+      "reference_max": 36,
+      "flag": "HIGH",
+      "is_abnormal": true
+    },
+    {
+      "original_name": "Control",
+      "standardized_name": "control",
+      "category": "OTHER",
+      "value": 30.0,
+      "unit": "sec",
+      "reference_min": null,
+      "reference_max": null,
+      "flag": null,
+      "is_abnormal": false
+    },
+    {
+      "original_name": "Haemoglobin Estimation (Hb)",
+      "standardized_name": "haemoglobin_estimation_(hb)",
+      "category": "OTHER",
+      "value": 15.3,
+      "unit": "g/dl",
+      "reference_min": 11.1,
+      "reference_max": 14.1,
+      "flag": "HIGH",
+      "is_abnormal": true
+    },
+    {
+      "original_name": "Total Leukocyte Count (TLC)",
+      "standardized_name": "total_leukocyte_count_(tlc)",
+      "category": "OTHER",
+      "value": 9.9,
+      "unit": "K/uL",
+      "reference_min": 6,
+      "reference_max": 18,
+      "flag": null,
+      "is_abnormal": false
+    },
+    {
+      "original_name": "Platelet Count",
+      "standardized_name": "platelets",
+      "category": "CBC",
+      "value": 107,
+      "unit": "K/uL",
+      "reference_min": 200,
+      "reference_max": 550,
+      "flag": "CRITICAL_LOW",
+      "is_abnormal": true
+    },
+    {
+      "original_name": "RBC Count (Red Blood Cell)",
+      "standardized_name": "rbc_count_(red_blood_cell)",
+      "category": "OTHER",
+      "value": 5.33,
+      "unit": "10^6/uL",
+      "reference_min": 4.1,
+      "reference_max": 5.3,
+      "flag": "HIGH",
+      "is_abnormal": true
+    },
+    {
+      "original_name": "PCV (Haematocrit)",
+      "standardized_name": "pcv_(haematocrit)",
+      "category": "OTHER",
+      "value": 44.5,
+      "unit": "%",
+      "reference_min": 30,
+      "reference_max": 40,
+      "flag": "HIGH",
+      "is_abnormal": true
+    },
+    {
+      "original_name": "Mean Corpuscular Volume (MCV)",
+      "standardized_name": "mean_corpuscular_volume_(mcv)",
+      "category": "OTHER",
+      "value": 83.4,
+      "unit": "fl",
+      "reference_min": 68,
+      "reference_max": 84,
+      "flag": null,
+      "is_abnormal": false
+    },
+    {
+      "original_name": "Mean corpuscular hemoglobin (MCH)",
+      "standardized_name": "mean_corpuscular_hemoglobin_(mch)",
+      "category": "OTHER",
+      "value": 28.7,
+      "unit": "pg",
+      "reference_min": 24,
+      "reference_max": 30,
+      "flag": null,
+      "is_abnormal": false
+    },
+    {
+      "original_name": "Mean corpuscular hemoglobin concentration(MCHC)",
+      "standardized_name": "mean_corpuscular_hemoglobin_concentration(mchc)",
+      "category": "OTHER",
+      "value": 34.4,
+      "unit": "g/dl",
+      "reference_min": 30,
+      "reference_max": 36,
+      "flag": null,
+      "is_abnormal": false
+    },
+    {
+      "original_name": "Red cell distribution width-CV%(RDW)",
+      "standardized_name": "red_cell_distribution_width_cv%(rdw)",
+      "category": "OTHER",
+      "value": 14.9,
+      "unit": "%",
+      "reference_min": 11.6,
+      "reference_max": 14,
+      "flag": "HIGH",
+      "is_abnormal": true
+    },
+    {
+      "original_name": "Platelet distribution width(PDW)",
+      "standardized_name": "platelet_distribution_width(pdw)",
+      "category": "OTHER",
+      "value": 15.7,
+      "unit": "fl",
+      "reference_min": 8.5,
+      "reference_max": 14.1,
+      "flag": "HIGH",
+      "is_abnormal": true
+    },
+    {
+      "original_name": "Mean platelet volume(MPV)",
+      "standardized_name": "mean_platelet_volume(mpv)",
+      "category": "OTHER",
+      "value": 8.7,
+      "unit": "fl",
+      "reference_min": 7.44,
+      "reference_max": 10.26,
+      "flag": null,
+      "is_abnormal": false
+    },
+    {
+      "original_name": "Neutrophils",
+      "standardized_name": "neutrophils",
+      "category": "CBC",
+      "value": 68,
+      "unit": "%",
+      "reference_min": 20,
+      "reference_max": 65,
+      "flag": "HIGH",
+      "is_abnormal": true
+    }
+  ],
+  "summary": {
+    "total": 14,
+    "abnormal": 8
+  }
+}
