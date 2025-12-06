@@ -72,6 +72,7 @@ class BiomarkerTrend(Document):
     
     # Unique identifier
     patient_id: Indexed(str)
+    clinic_id: Indexed(str)
     biomarker_name: Indexed(str)        # standardized_name
     category: str
     

@@ -79,6 +79,11 @@ class ResumeRequest(BaseModel):
     password: str
 
 
+class ResumeDateRequest(BaseModel):
+    """Request to resume processing with report date."""
+    report_date: str  # YYYY-MM-DD format
+
+
 class BiomarkerHistoryResponse(BaseModel):
     """Response for biomarker history query."""
     patient_id: str

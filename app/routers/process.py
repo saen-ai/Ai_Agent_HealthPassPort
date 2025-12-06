@@ -11,21 +11,30 @@ from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Background
 from pydantic import BaseModel
 
 from app.config import settings
+from app.core.logging import logger
 from app.schemas.extraction import (
     ProcessResponse,
     ResumeRequest,
+    ResumeDateRequest,
     LabReportListResponse,
     BiomarkerHistoryResponse,
 )
 from app.models.lab_report import LabReport, ReportStatus
 from app.models.biomarker import Biomarker, BiomarkerTrend
 from app.graphs.lab_extraction import lab_extraction_graph
+from app.services.vision_service import VisionService
+from app.data.biomarker_mapping import standardize_biomarker_name, get_biomarker_category, get_flag, get_reference_range
 
 router = APIRouter(prefix="/process", tags=["Lab Processing"])
 
 
 # Store for tracking ongoing workflows
 workflow_store: dict = {}
+
+# Supported file extensions
+SUPPORTED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+SUPPORTED_PDF_EXTENSIONS = {".pdf"}
+ALL_SUPPORTED_EXTENSIONS = SUPPORTED_IMAGE_EXTENSIONS | SUPPORTED_PDF_EXTENSIONS
 
 
 class ProcessLabReportRequest(BaseModel):
@@ -34,6 +43,21 @@ class ProcessLabReportRequest(BaseModel):
     clinic_id: str
     report_date: Optional[str] = None
     pdf_password: Optional[str] = None
+
+
+def get_file_extension(filename: str) -> str:
+    """Get lowercase file extension."""
+    return Path(filename).suffix.lower()
+
+
+def is_image_file(filename: str) -> bool:
+    """Check if file is an image."""
+    return get_file_extension(filename) in SUPPORTED_IMAGE_EXTENSIONS
+
+
+def is_pdf_file(filename: str) -> bool:
+    """Check if file is a PDF."""
+    return get_file_extension(filename) in SUPPORTED_PDF_EXTENSIONS
 
 
 @router.post("/lab-report", response_model=ProcessResponse)
@@ -46,21 +70,29 @@ async def process_lab_report(
     pdf_password: str = Form(None),
 ):
     """
-    Upload and process a lab report PDF.
+    Upload and process a lab report (PDF or image).
+    
+    Supported formats: PDF, PNG, JPG, JPEG, WEBP, GIF
     
     The workflow will:
-    1. Check if PDF is encrypted
-    2. If encrypted, return status="waiting_password" and pause
-    3. Extract text and tables
-    4. Use Vision API if needed
-    5. Standardize biomarkers
-    6. Save to database
+    1. For PDFs: Check if encrypted, extract text/tables, use Vision if needed
+    2. For Images: Use Vision API directly
+    3. Standardize biomarkers
+    4. Save to database
+    
+    If date cannot be extracted and wasn't provided, returns status="waiting_date".
     
     Returns thread_id for tracking/resuming the workflow.
     """
     # Validate file type
-    if not file.filename.lower().endswith(".pdf"):
-        raise HTTPException(status_code=400, detail="Only PDF files are accepted")
+    file_ext = get_file_extension(file.filename)
+    if file_ext not in ALL_SUPPORTED_EXTENSIONS:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Unsupported file type. Accepted formats: PDF, PNG, JPG, JPEG, WEBP, GIF"
+        )
+    
+    logger.info(f"Receiving upload for patient {patient_id}, file: {file.filename}")
     
     # Generate unique thread_id
     thread_id = str(uuid.uuid4())
@@ -70,17 +102,28 @@ async def process_lab_report(
     upload_dir.mkdir(parents=True, exist_ok=True)
     
     # Save the uploaded file
-    pdf_path = str(upload_dir / file.filename)
-    with open(pdf_path, "wb") as f:
+    file_path = str(upload_dir / file.filename)
+    with open(file_path, "wb") as f:
         shutil.copyfileobj(file.file, f)
     
-    # Prepare initial state
+    # Check if it's an image - process differently
+    if is_image_file(file.filename):
+        return await process_image_report(
+            file_path=file_path,
+            patient_id=patient_id,
+            clinic_id=clinic_id,
+            thread_id=thread_id,
+            report_date=report_date,
+        )
+    
+    # PDF processing - use the graph workflow
     initial_state = {
-        "pdf_path": pdf_path,
+        "pdf_path": file_path,
         "patient_id": patient_id,
         "clinic_id": clinic_id,
         "thread_id": thread_id,
-        "report_date": report_date or datetime.utcnow().isoformat(),
+        "report_date": report_date,  # Don't default to now - let AI extract
+        "user_provided_date": report_date is not None,
         "is_encrypted": False,
         "password": pdf_password,
         "decrypt_error": None,
@@ -116,6 +159,15 @@ async def process_lab_report(
                 result=None,
             )
         
+        # Check if waiting for date
+        if result.get("status") == "waiting_date":
+            return ProcessResponse(
+                status="waiting_date",
+                thread_id=thread_id,
+                message="Could not extract report date. Please provide the test date.",
+                result=None,
+            )
+        
         # Check for errors
         if result.get("errors"):
             return ProcessResponse(
@@ -143,7 +195,7 @@ async def process_lab_report(
     except Exception as e:
         # Handle interrupt (password required)
         if "interrupt" in str(type(e)).lower():
-            workflow_store[thread_id] = {"status": "waiting_password", "pdf_path": pdf_path}
+            workflow_store[thread_id] = {"status": "waiting_password", "pdf_path": file_path}
             return ProcessResponse(
                 status="waiting_password",
                 thread_id=thread_id,
@@ -151,7 +203,224 @@ async def process_lab_report(
                 result=None,
             )
         
+        logger.error(f"Error processing lab report: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+async def process_image_report(
+    file_path: str,
+    patient_id: str,
+    clinic_id: str,
+    thread_id: str,
+    report_date: Optional[str] = None,
+) -> ProcessResponse:
+    """
+    Process an image file directly using Vision API.
+    """
+    logger.info(f"Processing image report: {file_path}")
+    
+    try:
+        vision_service = VisionService()
+        vision_result = vision_service.extract_from_image(file_path)
+        
+        if "error" in vision_result:
+            logger.error(f"Vision extraction failed: {vision_result['error']}")
+            return ProcessResponse(
+                status="failed",
+                thread_id=thread_id,
+                message=f"Failed to extract data from image: {vision_result['error']}",
+                result=None,
+            )
+        
+        # Extract date from vision result or use provided
+        extracted_date = vision_result.get("report_date")
+        final_date = report_date or extracted_date
+        
+        # If no date, ask user
+        if not final_date:
+            workflow_store[thread_id] = {
+                "status": "waiting_date",
+                "file_path": file_path,
+                "patient_id": patient_id,
+                "clinic_id": clinic_id,
+                "vision_result": vision_result,
+            }
+            return ProcessResponse(
+                status="waiting_date",
+                thread_id=thread_id,
+                message="Could not extract report date from image. Please provide the test date.",
+                result=None,
+            )
+        
+        # Parse and standardize biomarkers
+        biomarkers = []
+        for item in vision_result.get("biomarkers", []):
+            name = item.get("name")
+            value = item.get("value")
+            unit = item.get("unit", "")
+            
+            if not name or value is None:
+                continue
+            
+            try:
+                value = float(value)
+            except (ValueError, TypeError):
+                continue
+            
+            standardized_name = standardize_biomarker_name(name)
+            category = get_biomarker_category(standardized_name)
+            ref_min, ref_max = get_reference_range(
+                standardized_name, 
+                f"{item.get('reference_min', '')}-{item.get('reference_max', '')}" if item.get('reference_min') else None
+            )
+            
+            # Use reference from vision if available
+            if item.get("reference_min") is not None:
+                ref_min = float(item["reference_min"])
+            if item.get("reference_max") is not None:
+                ref_max = float(item["reference_max"])
+            
+            flag = get_flag(standardized_name, value, ref_min, ref_max)
+            is_abnormal = flag is not None
+            
+            biomarkers.append({
+                "name": name,
+                "standardized_name": standardized_name,
+                "category": category,
+                "value": value,
+                "unit": unit,
+                "reference_min": ref_min,
+                "reference_max": ref_max,
+                "flag": flag,
+                "is_abnormal": is_abnormal,
+            })
+        
+        logger.info(f"Extracted {len(biomarkers)} biomarkers from image")
+        
+        # Save to database
+        report_datetime = datetime.fromisoformat(final_date.replace("Z", "+00:00")) if "T" in final_date else datetime.strptime(final_date, "%Y-%m-%d")
+        
+        lab_report = LabReport(
+            patient_id=patient_id,
+            clinic_id=clinic_id,
+            report_date=report_datetime,
+            lab_name=vision_result.get("lab_name"),
+            report_type=vision_result.get("report_type", "OTHER"),
+            status="completed",
+            thread_id=thread_id,
+        )
+        await lab_report.insert()
+        
+        report_id = str(lab_report.id)
+        logger.info(f"Created lab report: {report_id}")
+        
+        # Save biomarkers
+        for bm in biomarkers:
+            biomarker = Biomarker(
+                patient_id=patient_id,
+                report_id=report_id,
+                clinic_id=clinic_id,
+                name=bm["name"],
+                standardized_name=bm["standardized_name"],
+                category=bm["category"],
+                value=bm["value"],
+                unit=bm["unit"],
+                reference_min=bm.get("reference_min"),
+                reference_max=bm.get("reference_max"),
+                flag=bm.get("flag"),
+                is_abnormal=bm.get("is_abnormal", False),
+                test_date=report_datetime,
+            )
+            await biomarker.insert()
+            
+            # Update or create trend
+            await update_biomarker_trend(biomarker)
+        
+        logger.info(f"Saved {len(biomarkers)} biomarkers")
+        
+        return ProcessResponse(
+            status="completed",
+            thread_id=thread_id,
+            report_id=report_id,
+            message=f"Successfully processed {len(biomarkers)} biomarkers",
+            result={
+                "report_type": vision_result.get("report_type", "OTHER"),
+                "lab_name": vision_result.get("lab_name"),
+                "biomarkers": biomarkers,
+                "total_biomarkers": len(biomarkers),
+                "abnormal_count": sum(1 for b in biomarkers if b.get("is_abnormal")),
+            },
+        )
+        
+    except Exception as e:
+        logger.error(f"Error processing image report: {e}")
+        return ProcessResponse(
+            status="failed",
+            thread_id=thread_id,
+            message=str(e),
+            result=None,
+        )
+
+
+async def update_biomarker_trend(biomarker: Biomarker):
+    """Update or create a biomarker trend record."""
+    from app.models.biomarker import BiomarkerReading
+    
+    trend = await BiomarkerTrend.find_one({
+        "patient_id": biomarker.patient_id,
+        "biomarker_name": biomarker.standardized_name,
+    })
+    
+    new_reading = BiomarkerReading(
+        date=biomarker.test_date,
+        value=biomarker.value,
+        unit=biomarker.unit,
+        flag=biomarker.flag,
+        report_id=biomarker.report_id,
+    )
+    
+    if trend:
+        # Add reading and update stats
+        trend.readings.append(new_reading)
+        trend.readings.sort(key=lambda r: r.date)
+        
+        values = [r.value for r in trend.readings]
+        trend.latest_value = biomarker.value
+        trend.latest_unit = biomarker.unit
+        trend.latest_date = biomarker.test_date
+        trend.latest_flag = biomarker.flag
+        trend.reading_count = len(trend.readings)
+        trend.min_value = min(values)
+        trend.max_value = max(values)
+        trend.average_value = sum(values) / len(values)
+        
+        # Calculate trend
+        if len(values) >= 2:
+            change = values[-1] - values[-2]
+            trend.trend_percent = (change / values[-2]) * 100 if values[-2] != 0 else 0
+            trend.trend_direction = "increasing" if change > 0 else "decreasing" if change < 0 else "stable"
+        
+        await trend.save()
+    else:
+        # Create new trend
+        trend = BiomarkerTrend(
+            patient_id=biomarker.patient_id,
+            clinic_id=biomarker.clinic_id,
+            biomarker_name=biomarker.standardized_name,
+            category=biomarker.category,
+            readings=[new_reading],
+            latest_value=biomarker.value,
+            latest_unit=biomarker.unit,
+            latest_date=biomarker.test_date,
+            latest_flag=biomarker.flag,
+            reading_count=1,
+            min_value=biomarker.value,
+            max_value=biomarker.value,
+            average_value=biomarker.value,
+            trend_direction="stable",
+            trend_percent=0,
+        )
+        await trend.insert()
 
 
 @router.post("/resume/{thread_id}", response_model=ProcessResponse)
@@ -207,6 +476,67 @@ async def resume_with_password(thread_id: str, request: ResumeRequest):
         )
         
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/resume-date/{thread_id}", response_model=ProcessResponse)
+async def resume_with_date(thread_id: str, request: ResumeDateRequest):
+    """
+    Resume a paused workflow by providing the report date.
+    """
+    if thread_id not in workflow_store:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    
+    stored = workflow_store[thread_id]
+    
+    if stored.get("status") != "waiting_date":
+        raise HTTPException(status_code=400, detail="Workflow is not waiting for date")
+    
+    # For image files, we have vision_result stored
+    if "vision_result" in stored:
+        return await process_image_report(
+            file_path=stored["file_path"],
+            patient_id=stored["patient_id"],
+            clinic_id=stored["clinic_id"],
+            thread_id=thread_id,
+            report_date=request.report_date,
+        )
+    
+    # For PDFs, resume the graph workflow
+    config = {"configurable": {"thread_id": thread_id}}
+    
+    try:
+        result = await lab_extraction_graph.ainvoke(
+            {"report_date": request.report_date, "user_provided_date": True},
+            config,
+        )
+        
+        workflow_store[thread_id] = result
+        
+        if result.get("errors"):
+            return ProcessResponse(
+                status="failed",
+                thread_id=thread_id,
+                message="; ".join(result["errors"]),
+                result=None,
+            )
+        
+        return ProcessResponse(
+            status="completed",
+            thread_id=thread_id,
+            report_id=result.get("report_id"),
+            message=f"Successfully processed {len(result.get('biomarkers', []))} biomarkers",
+            result={
+                "report_type": result.get("report_type"),
+                "lab_name": result.get("lab_name"),
+                "biomarkers": result.get("biomarkers", []),
+                "total_biomarkers": len(result.get("biomarkers", [])),
+                "abnormal_count": sum(1 for b in result.get("biomarkers", []) if b.get("is_abnormal")),
+            },
+        )
+        
+    except Exception as e:
+        logger.error(f"Error resuming with date: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

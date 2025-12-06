@@ -2,6 +2,7 @@
 
 import base64
 import json
+import re
 from pathlib import Path
 from typing import List, Optional
 from openai import OpenAI
@@ -22,6 +23,74 @@ class VisionService:
         with open(image_path, "rb") as f:
             return base64.b64encode(f.read()).decode("utf-8")
     
+    @staticmethod
+    def get_mime_type(image_path: str) -> str:
+        """Get MIME type based on file extension."""
+        ext = Path(image_path).suffix.lower()
+        mime_types = {
+            ".png": "image/png",
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".gif": "image/gif",
+            ".webp": "image/webp",
+        }
+        return mime_types.get(ext, "image/png")
+    
+    @staticmethod
+    def extract_json_from_text(text: str) -> Optional[dict]:
+        """
+        Extract JSON object from text that may contain markdown or other content.
+        Uses multiple strategies to find valid JSON.
+        """
+        if not text:
+            return None
+        
+        # Strategy 1: Try parsing the text directly
+        try:
+            return json.loads(text.strip())
+        except json.JSONDecodeError:
+            pass
+        
+        # Strategy 2: Remove markdown code blocks
+        # Handle ```json ... ``` and ``` ... ```
+        patterns = [
+            r'```json\s*([\s\S]*?)\s*```',  # ```json ... ```
+            r'```\s*([\s\S]*?)\s*```',       # ``` ... ```
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                try:
+                    return json.loads(match.group(1).strip())
+                except json.JSONDecodeError:
+                    continue
+        
+        # Strategy 3: Find JSON object by looking for { ... }
+        # Find the outermost curly braces
+        start_idx = text.find('{')
+        if start_idx != -1:
+            # Count braces to find matching end
+            depth = 0
+            end_idx = start_idx
+            for i, char in enumerate(text[start_idx:], start_idx):
+                if char == '{':
+                    depth += 1
+                elif char == '}':
+                    depth -= 1
+                    if depth == 0:
+                        end_idx = i
+                        break
+            
+            if end_idx > start_idx:
+                try:
+                    json_str = text[start_idx:end_idx + 1]
+                    return json.loads(json_str)
+                except json.JSONDecodeError:
+                    pass
+        
+        return None
+    
     def extract_from_image(self, image_path: str) -> dict:
         """
         Extract lab report data from a single image using GPT-4o Vision.
@@ -29,6 +98,7 @@ class VisionService:
         """
         try:
             base64_image = self.image_to_base64(image_path)
+            mime_type = self.get_mime_type(image_path)
             
             prompt = """You are a medical lab report data extractor.
 
@@ -37,7 +107,7 @@ Analyze this lab report image and extract ALL information you can find.
 Return a JSON object with:
 {
     "lab_name": "Name of the laboratory (if visible)",
-    "report_date": "Date of the report in YYYY-MM-DD format (if visible)",
+    "report_date": "Date of the report in YYYY-MM-DD format (if visible, convert any date format to YYYY-MM-DD)",
     "patient_info": {
         "name": "Patient name (if visible)",
         "dob": "Date of birth (if visible)",
@@ -59,10 +129,11 @@ Return a JSON object with:
 Important:
 - Extract EVERY biomarker/test result you can see
 - Use the exact test name as shown in the report
-- For value, extract only the numeric part
+- For value, extract only the numeric part (as a number, not string)
 - If reference range is shown as "X - Y", extract min=X, max=Y
 - Flag as HIGH if value > reference_max, LOW if value < reference_min
-- Return ONLY valid JSON, no markdown or explanation"""
+- Return ONLY valid JSON, no markdown code blocks or explanation
+- If you cannot extract a date, set report_date to null"""
 
             response = self.client.chat.completions.create(
                 model="gpt-4o",
@@ -74,31 +145,34 @@ Important:
                             {
                                 "type": "image_url",
                                 "image_url": {
-                                    "url": f"data:image/png;base64,{base64_image}",
+                                    "url": f"data:{mime_type};base64,{base64_image}",
                                     "detail": "high"
                                 }
                             }
                         ]
                     }
                 ],
-                max_tokens=4000
+                max_tokens=4000,
+                temperature=0.1,  # Lower temperature for more consistent JSON output
             )
             
-            result = response.choices[0].message.content
+            result_text = response.choices[0].message.content
+            logger.debug(f"Vision API raw response: {result_text[:500]}...")
             
-            # Parse JSON from response
-            # Clean up if response has markdown code blocks
-            if result.startswith("```"):
-                result = result.split("```")[1]
-                if result.startswith("json"):
-                    result = result[4:]
-            result = result.strip()
+            # Try to extract JSON from the response
+            parsed = self.extract_json_from_text(result_text)
             
-            return json.loads(result)
+            if parsed:
+                logger.info(f"Successfully extracted {len(parsed.get('biomarkers', []))} biomarkers from image")
+                return parsed
             
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse Vision API response as JSON: {e}")
-            return {"error": "Failed to parse response", "raw": result if 'result' in locals() else None}
+            # If parsing failed, log the raw response and return error
+            logger.error(f"Failed to extract JSON from Vision API response. Raw: {result_text}")
+            return {
+                "error": "Failed to parse response",
+                "raw": result_text,
+            }
+            
         except Exception as e:
             logger.error(f"Error extracting from image with Vision API: {e}")
             return {"error": str(e)}
@@ -142,12 +216,11 @@ Important:
         
         # Remove duplicate biomarkers (keep last occurrence)
         seen = {}
-        unique_biomarkers = []
         for bio in merged_result["biomarkers"]:
             name = bio.get("name", "").lower()
             seen[name] = bio
-        unique_biomarkers = list(seen.values())
-        merged_result["biomarkers"] = unique_biomarkers
+        merged_result["biomarkers"] = list(seen.values())
+        
+        logger.info(f"Merged {len(merged_result['biomarkers'])} unique biomarkers from {len(image_paths)} images")
         
         return merged_result
-
