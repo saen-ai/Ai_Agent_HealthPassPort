@@ -330,13 +330,18 @@ def get_reference_range(
 def get_flag(
     standardized_name: str,
     value: float,
+    ref_min: Optional[float] = None,
+    ref_max: Optional[float] = None,
     gender: Optional[str] = None
 ) -> Optional[str]:
     """
     Determine flag (HIGH/LOW) based on reference range.
+    If ref_min/ref_max are not provided, looks up from biomarker mapping.
     Returns None if within range or range not found.
     """
-    ref_min, ref_max = get_reference_range(standardized_name, gender)
+    # Use provided reference range or look up
+    if ref_min is None or ref_max is None:
+        ref_min, ref_max = get_reference_range(standardized_name, gender)
     
     if ref_min is None or ref_max is None:
         return None

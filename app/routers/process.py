@@ -273,7 +273,7 @@ async def process_image_report(
         for item in raw_biomarkers:
             name = item.get("name")
             value = item.get("value")
-            unit = item.get("unit", "")
+            unit = item.get("unit") or ""  # Ensure None becomes empty string
             
             if not name or value is None:
                 logger.debug(f"Skipping biomarker - missing name or value: {item}")

@@ -30,7 +30,7 @@ class Biomarker(Document):
     
     # Value
     value: float
-    unit: str
+    unit: str = ""  # Default to empty string for biomarkers without units
     
     # Reference range
     reference_min: Optional[float] = None
@@ -62,7 +62,7 @@ class BiomarkerReading(BaseModel):
     """Single reading in biomarker history."""
     date: datetime
     value: float
-    unit: str
+    unit: str = ""
     flag: Optional[str] = None
     report_id: str
 
@@ -81,7 +81,7 @@ class BiomarkerTrend(Document):
     
     # Latest values (for quick access)
     latest_value: float
-    latest_unit: str
+    latest_unit: str = ""
     latest_date: datetime
     latest_flag: Optional[str] = None
     
