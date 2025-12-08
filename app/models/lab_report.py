@@ -42,8 +42,8 @@ class LabReport(Document):
     lab_name: Optional[str] = None
     report_type: str = ReportType.OTHER.value
     
-    # File storage
-    pdf_url: str
+    # File storage (optional for images)
+    pdf_url: Optional[str] = None
     
     # Processing status
     status: str = ReportStatus.PENDING.value

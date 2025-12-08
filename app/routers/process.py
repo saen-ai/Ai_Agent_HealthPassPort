@@ -213,24 +213,36 @@ async def process_image_report(
     clinic_id: str,
     thread_id: str,
     report_date: Optional[str] = None,
+    vision_result: Optional[dict] = None,  # Pre-computed vision result
 ) -> ProcessResponse:
     """
     Process an image file directly using Vision API.
+    If vision_result is provided, skip Vision API call.
     """
     logger.info(f"Processing image report: {file_path}")
     
     try:
-        vision_service = VisionService()
-        vision_result = vision_service.extract_from_image(file_path)
+        # Use provided vision_result or call Vision API
+        if vision_result is None:
+            vision_service = VisionService()
+            vision_result = vision_service.extract_from_image(file_path)
+        else:
+            logger.info("Using pre-computed vision result (skipping Vision API call)")
         
         if "error" in vision_result:
             logger.error(f"Vision extraction failed: {vision_result['error']}")
+            if "raw" in vision_result:
+                logger.error(f"Vision raw response: {vision_result['raw'][:500]}...")
             return ProcessResponse(
                 status="failed",
                 thread_id=thread_id,
                 message=f"Failed to extract data from image: {vision_result['error']}",
                 result=None,
             )
+        
+        logger.info(f"Vision extraction successful: report_type={vision_result.get('report_type')}, "
+                   f"biomarkers={len(vision_result.get('biomarkers', []))}, "
+                   f"report_date={vision_result.get('report_date')}")
         
         # Extract date from vision result or use provided
         extracted_date = vision_result.get("report_date")
@@ -254,17 +266,23 @@ async def process_image_report(
         
         # Parse and standardize biomarkers
         biomarkers = []
-        for item in vision_result.get("biomarkers", []):
+        raw_biomarkers = vision_result.get("biomarkers", [])
+        logger.info(f"Vision result has {len(raw_biomarkers)} raw biomarkers")
+        logger.debug(f"Raw biomarkers: {raw_biomarkers[:3] if raw_biomarkers else 'none'}...")
+        
+        for item in raw_biomarkers:
             name = item.get("name")
             value = item.get("value")
             unit = item.get("unit", "")
             
             if not name or value is None:
+                logger.debug(f"Skipping biomarker - missing name or value: {item}")
                 continue
             
             try:
                 value = float(value)
-            except (ValueError, TypeError):
+            except (ValueError, TypeError) as e:
+                logger.debug(f"Skipping biomarker - cannot convert value to float: {item}, error: {e}")
                 continue
             
             standardized_name = standardize_biomarker_name(name)
@@ -500,6 +518,7 @@ async def resume_with_date(thread_id: str, request: ResumeDateRequest):
             clinic_id=stored["clinic_id"],
             thread_id=thread_id,
             report_date=request.report_date,
+            vision_result=stored["vision_result"],  # Use stored result
         )
     
     # For PDFs, resume the graph workflow
