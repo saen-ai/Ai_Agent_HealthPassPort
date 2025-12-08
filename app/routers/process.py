@@ -578,6 +578,8 @@ async def get_patient_reports(patient_id: str, limit: int = 50, skip: int = 0):
                 "report_type": r.report_type,
                 "lab_name": r.lab_name,
                 "status": r.status,
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+                "processed_at": r.processed_at.isoformat() if r.processed_at else None,
             }
             for r in reports
         ],
@@ -601,10 +603,13 @@ async def get_report_details(patient_id: str, report_id: str):
         "report": {
             "id": str(report.id),
             "patient_id": report.patient_id,
+            "clinic_id": report.clinic_id,
             "report_date": report.report_date.isoformat(),
             "report_type": report.report_type,
             "lab_name": report.lab_name,
             "status": report.status,
+            "created_at": report.created_at.isoformat() if report.created_at else None,
+            "processed_at": report.processed_at.isoformat() if report.processed_at else None,
         },
         "biomarkers": [
             {
