@@ -85,6 +85,10 @@ class BiomarkerTrend(Document):
     latest_date: datetime
     latest_flag: Optional[str] = None
     
+    # Reference range (from latest reading)
+    reference_min: Optional[float] = None
+    reference_max: Optional[float] = None
+    
     # Trend analysis
     trend_direction: str = "stable"     # "increasing", "decreasing", "stable"
     trend_percent: float = 0.0          # Percentage change from first to last

@@ -412,6 +412,12 @@ async def update_biomarker_trend(biomarker: Biomarker):
         trend.max_value = max(values)
         trend.average_value = sum(values) / len(values)
         
+        # Update reference ranges from latest biomarker
+        if biomarker.reference_min is not None:
+            trend.reference_min = biomarker.reference_min
+        if biomarker.reference_max is not None:
+            trend.reference_max = biomarker.reference_max
+        
         # Calculate trend
         if len(values) >= 2:
             change = values[-1] - values[-2]
@@ -431,6 +437,8 @@ async def update_biomarker_trend(biomarker: Biomarker):
             latest_unit=biomarker.unit,
             latest_date=biomarker.test_date,
             latest_flag=biomarker.flag,
+            reference_min=biomarker.reference_min,
+            reference_max=biomarker.reference_max,
             reading_count=1,
             min_value=biomarker.value,
             max_value=biomarker.value,
