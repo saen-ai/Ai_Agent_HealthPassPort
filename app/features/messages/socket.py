@@ -10,9 +10,12 @@ from bson import ObjectId
 
 
 # Create Socket.IO server with ASGI support
+# In production, CORS should be restricted to specific origins from settings
+from app.config import settings
+
 sio = socketio.AsyncServer(
     async_mode="asgi",
-    cors_allowed_origins="*",  # In production, restrict this
+    cors_allowed_origins=settings.cors_origins if settings.ENVIRONMENT == "production" else "*",
     logger=False,
     engineio_logger=False,
 )
