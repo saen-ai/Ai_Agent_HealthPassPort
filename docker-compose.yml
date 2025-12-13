@@ -1,0 +1,81 @@
+services:
+  ai-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: health-passport-ai
+    ports:
+      - "8080:8080"
+    environment:
+      # Database
+      - MONGODB_URL=mongodb://mongodb:27017
+      - DATABASE_NAME=health_passport
+      
+      # Security (override in production)
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-your-super-secret-key-change-in-production}
+      - JWT_ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+      
+      # Email Configuration
+      - SMTP_HOST=${SMTP_HOST:-smtp.gmail.com}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - EMAIL_FROM=${EMAIL_FROM}
+      
+      # Application
+      - APP_NAME=Health Passport AI
+      - API_V1_PREFIX=/api/v1
+      - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS:-["http://localhost:3000","http://localhost:3001"]}
+      
+      # Environment
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - DEBUG=${DEBUG:-true}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      
+      # GCP Storage (optional)
+      - GCP_STORAGE_BUCKET_NAME=${GCP_STORAGE_BUCKET_NAME:-}
+      - GCP_PROJECT_ID=${GCP_PROJECT_ID:-}
+      - GOOGLE_APPLICATION_CREDENTIALS=${GOOGLE_APPLICATION_CREDENTIALS:-}
+      
+      # Push Notifications (optional)
+      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY:-}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY:-}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - health-passport-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  mongodb:
+    image: mongo:7.0
+    container_name: health-passport-ai-mongodb
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongodb_ai_data:/data/db
+    command: ["mongod", "--quiet", "--logpath", "/dev/null"]
+    networks:
+      - health-passport-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+networks:
+  health-passport-network:
+    driver: bridge
+
+volumes:
+  mongodb_ai_data:
+
